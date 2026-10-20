@@ -226,3 +226,22 @@ Chi tiết: [bridge mobile](docs/mobile-webview.md), [tách editor khỏi Electr
 `.gitignore` loại các thư mục build/cache, `node_modules`, output Vite, báo cáo kiểm thử, cấu hình máy và file khóa ký. Assets runtime và hai lockfile vẫn được commit để clone xong có thể cài và chạy.
 
 Source/renderer/engine GenOffice được lấy từ commit `1cb2925afe173b266c1545a3871a397429e11b7e`, với LICENSE/NOTICE và license font được giữ trong `editor_web/vendor/` và `assets/editor/`. Không bao gồm thư mục enterprise `ee/`. Xem [VENDOR.md](editor_web/VENDOR.md) trước khi cập nhật hoặc phân phối phần upstream.
+
+## Quy trình phát triển
+
+- Nhánh `dev`: phát triển, sửa lỗi và kiểm thử.
+- Nhánh chính hiện tại `codex/initial-import`: giữ phiên bản đã được chủ dự án chấp thuận.
+- Chỉ đưa thay đổi từ `dev` sang nhánh chính khi chủ dự án yêu cầu rõ ràng; build/test thành công chưa phải là chấp thuận merge.
+
+Sau khi clone, chuyển sang nhánh phát triển trước khi sửa code:
+
+```sh
+git fetch origin
+git switch dev
+```
+
+Push công việc phát triển:
+
+```sh
+git push origin dev
+```
