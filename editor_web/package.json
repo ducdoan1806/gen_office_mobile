@@ -1,0 +1,40 @@
+{
+  "name": "gen-office-mobile-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "preview": "vite preview",
+    "test:e2e:production": "playwright test --config playwright.production.config.ts"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.3.4",
+    "jszip": "^3.10.1",
+    "utif2": "^4.1.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "@tiptap/core": "3.31.0",
+    "@tiptap/react": "3.31.0",
+    "@tiptap/pm": "3.31.0",
+    "@tiptap/extensions": "3.31.0",
+    "opentype.js": "^2.0.0",
+    "bidi-js": "^1.0.3",
+    "marked": "^17.0.6",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.2.108"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1",
+    "vitest": "^4.1.11",
+    "typescript": "^5.9.3",
+    "@playwright/test": "^1.61.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/node": "^24.10.1"
+  }
+}

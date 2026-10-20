@@ -1,0 +1,25 @@
+import { test, expect } from '@playwright/test';
+import JSZip from 'jszip';
+import { readFile } from 'node:fs/promises';
+import { fixture } from '../tests/fixture';
+test('browser opens, patches, downloads and reopens DOCX without Electron', async ({ page }) => {
+ const errors:string[]=[];
+ page.on('pageerror', error => errors.push(error.message));
+ await page.goto('/prototype.html');
+ await page.locator('#file').setInputFiles({name:'factory.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:Buffer.from(await fixture())});
+ await expect(page.locator('#status')).toContainText('Đã mở factory.docx');
+ const paragraph=page.getByRole('textbox',{name:'Đoạn 1',exact:true});
+ await paragraph.fill('Quy trình mới & an toàn');
+ const downloadPromise=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Xuất DOCX',exact:true}).click();
+ const download=await downloadPromise;
+ const bytes=await readFile((await download.path())!);
+ const zip=await JSZip.loadAsync(bytes);
+ expect(await zip.file('word/document.xml')!.async('string')).toContain('Quy trình mới &amp; an toàn');
+ await page.getByRole('button',{name:'Hoàn tác toàn bộ'}).click();
+ await expect(paragraph).toHaveValue('Xin chào nhà máy');
+ await page.locator('#file').setInputFiles({name:'reopened.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:bytes});
+ await expect(page.locator('#status')).toContainText('Đã mở reopened.docx');
+ await expect(page.getByRole('textbox',{name:'Đoạn 1',exact:true})).toHaveValue('Quy trình mới & an toàn');
+ expect(errors).toEqual([]);
+});

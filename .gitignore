@@ -1,0 +1,69 @@
+# OS/editor temporary files
+.DS_Store
+._*
+Thumbs.db
+*.swp
+*.swo
+*.log
+*.pyc
+__pycache__/
+.idea/
+*.iml
+*.ipr
+*.iws
+.history/
+.atom/
+.build/
+.buildlog/
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# Flutter/Dart caches and generated outputs; keep pubspec.lock for this app.
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+app.*.symbols
+app.*.map.json
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+
+# Android local SDK settings, Gradle/CMake and signing credentials
+**/local.properties
+**/.gradle/
+**/.cxx/
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+
+# Apple dependency/build output and per-user Xcode state
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+**/xcuserdata/
+**/*.xcuserstate
+
+# Web editor dependencies/output. Runtime assets under assets/editor ARE tracked.
+**/node_modules/
+/editor_web/dist/
+/editor_web/test-results/
+/editor_web/playwright-report/
+/editor_web/blob-report/
+*.tsbuildinfo
+
+# Local environment and private keys; examples can be committed.
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
