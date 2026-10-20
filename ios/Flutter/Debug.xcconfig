@@ -1,2 +1,7 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// Xcode 27 runs only on Apple Silicon. Flutter 3.35's multi-architecture
+// lipo verification is incompatible with its toolchain. Limit only Debug
+// Simulator builds using SDK 27; preserve other SDKs and physical devices.
+ARCHS[sdk=iphonesimulator27.*] = arm64
