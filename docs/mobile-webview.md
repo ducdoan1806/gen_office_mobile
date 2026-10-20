@@ -31,7 +31,7 @@ iOS: NSAllowsLocalNetworking permits local resources. macOS additionally has cli
 - Original toolbar download actions use native saving in mobile mode. Desktop print/image-picker integrations remain unavailable in mobile mode.
 - Recovery/autosave is not promised. 20 MB import / 32 MB export limits apply; expanded OOXML memory also depends on upstream parsing.
 - Flutter's AI files are unchanged and editor AI remains disabled.
-- Original desktop controls need real-device touch and Vietnamese IME QA. iOS/macOS have not been device-tested in this implementation.
+- Original desktop controls need real-device touch and Vietnamese IME QA. The iPhone Simulator running iOS 27 has passed the DOCX roundtrip integration test; physical iOS devices and macOS still need validation.
 
 ## Tests
 

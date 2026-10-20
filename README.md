@@ -11,7 +11,7 @@ Cài các công cụ sau trên máy phát triển:
 - **Git** để clone source.
 - **Flutter SDK 3.35.3** (kèm **Dart 3.9.2**): đây là phiên bản đã dùng để build và kiểm thử dự án. Nếu dùng Flutter mới hơn, cần kiểm tra tương thích dependency.
 - **Android Studio**, Android SDK và một Android emulator hoặc điện thoại Android bật USB debugging.
-- Để build iOS: cần **macOS, Xcode và CocoaPods**. iOS đã có cấu hình nhưng chưa được kiểm thử trên thiết bị/simulator trong phiên bản hiện tại.
+- Để build iOS: cần **macOS, Xcode và CocoaPods**. Dự án đặt deployment target **iOS 15.0 trở lên**, đồng bộ với Xcode 27. Đã kiểm thử luồng DOCX trên iPhone Simulator iOS 27; iPhone thật vẫn cần thiết lập signing và kiểm thử riêng.
 
 Hướng dẫn chính thức: [cài Flutter](https://docs.flutter.dev/install), [thiết lập Android](https://docs.flutter.dev/platform-integration/android/setup), [thiết lập iOS](https://docs.flutter.dev/platform-integration/ios/setup).
 
@@ -122,7 +122,7 @@ cd ..
 
 Với iPhone thật, mở `ios/Runner.xcworkspace` trong Xcode và thiết lập **Signing & Capabilities → Team** theo tài khoản của bạn.
 
-Dự án cũng có cấu hình WebView cho macOS: `flutter run -d macos`. iOS/macOS chưa được kiểm thử thiết bị trong phiên bản này. Editor WebView không hỗ trợ Flutter Web, Windows hoặc Linux ở bản tích hợp hiện tại.
+Dự án cũng có cấu hình WebView cho macOS: `flutter run -d macos`. iPhone Simulator iOS 27 đã được kiểm thử; iPhone thật và macOS vẫn cần xác nhận riêng. Editor WebView không hỗ trợ Flutter Web, Windows hoặc Linux ở bản tích hợp hiện tại.
 
 ## 6. Sửa và build lại editor web
 
@@ -185,7 +185,7 @@ $env:CHROME_PATH = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 npm run test:e2e:production
 ```
 
-Đã kiểm thử trên Android emulator: mở DOCX → chèn tiếng Việt → undo/redo → ghi file qua native → mở lại file đã lưu. Việc chèn chữ tự động không thay thế kiểm thử bàn phím/IME tiếng Việt trên điện thoại thật.
+Đã kiểm thử trên Android emulator và iPhone Simulator iOS 27: mở DOCX → chèn tiếng Việt → undo/redo → ghi file qua native → mở lại file đã lưu. Việc chèn chữ tự động không thay thế kiểm thử bàn phím/IME tiếng Việt trên điện thoại thật.
 
 ## 8. Cấu trúc dự án
 
@@ -245,3 +245,21 @@ Push công việc phát triển:
 ```sh
 git push origin dev
 ```
+
+### Lưu ý build iOS với Xcode 27
+
+Dự án yêu cầu deployment target iOS 15.0 cho Runner, Flutter framework và Pods. `pod install` tự đồng bộ target của plugin trong `post_install`; không sửa trực tiếp file trong `ios/Pods/`.
+
+Với Flutter 3.35, Debug Simulator dùng SDK 27 được cấu hình build `arm64` (Xcode 27 chạy trên Apple Silicon) để tránh lỗi `lipo -verify_arch` nhiều kiến trúc của Xcode 27. Cấu hình này không đổi kiến trúc của bản device hoặc Release/Profile. Lỗi upstream: https://github.com/flutter/flutter/issues/188461.
+
+```sh
+flutter pub get
+cd ios
+pod install
+cd ..
+flutter build ios --simulator --debug
+```
+
+Khi chạy bằng Xcode, mở `ios/Runner.xcworkspace` để có đầy đủ CocoaPods.
+
+Ứng dụng cũng đã khai báo `UIApplicationSceneManifest` với `FlutterSceneDelegate`, và `AppDelegate` đăng ký plugin bằng callback `FlutterPluginRegistrant` tương thích Flutter 3.35. Đây là phần cần thiết để app build bằng SDK iOS 27 không crash lúc mở. Xem [hướng dẫn xử lý build iOS](docs/ios-build.md).
