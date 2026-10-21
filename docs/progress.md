@@ -22,7 +22,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Chọn DOCX bằng file picker native và mở trong editor.
   - [x] Sao chép file import vào kho tài liệu lâu dài của app.
   - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút nhập DOCX.
-  - Bản lưu mới cũng được đưa vào thư viện; không ghi đè file gốc. Đã kiểm thử tự động lưu trữ và dựng lại thư viện; integration test mở/sửa/undo/redo/lưu/mở lại bản lưu và giữ nguyên bản gốc đạt trên Android emulator `emulator-5554` ngày 21/10/2026. Cần nghiệm thu điện thoại thật ở bước 2/8. Xem [kho tài liệu](document-library.md).
+  - Theo lựa chọn của chủ dự án, **Lưu** cập nhật đúng tài liệu đang mở trong thư viện, không tạo mục trùng; **Lưu thành bản mới** tạo bản riêng. File nguồn bên ngoài app vẫn được giữ nguyên. Cần nghiệm thu điện thoại thật ở bước 2/8. Xem [kho tài liệu](document-library.md).
 
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
   - [x] Tích hợp sửa nội dung, định dạng chữ, đoạn và bảng từ editor gốc.
@@ -32,7 +32,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [ ] Nghiệm thu đầy đủ trên điện thoại thật với bộ DOCX nhà máy, đối chiếu định dạng Word.
 
 - [ ] **Bước 5. Lưu, xuất và chia sẻ DOCX**
-  - [x] Lưu thành DOCX mới trong Documents riêng của app, dưới `GenOffice/exports`.
+  - [x] Lưu cập nhật DOCX đang mở trong thư viện; Lưu thành bản mới tạo bản riêng dưới `GenOffice/exports`.
   - [x] Kiểm thử lưu native và mở lại file kết quả.
   - [x] Cảnh báo thay đổi chưa lưu khi quay lại/mở file khác.
   - [ ] Thêm chọn nơi xuất và chia sẻ qua share sheet.
@@ -40,7 +40,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 
 - [ ] **Bước 6. Thêm undo/redo và khôi phục phiên**
   - [x] Nối và kiểm thử undo/redo.
-  - [x] Giữ file gốc bằng cách lưu thành bản mới.
+  - [x] Giữ file nguồn ngoài app; cập nhật bản trong thư viện khi Lưu, tạo bản riêng khi Lưu thành bản mới.
   - [ ] Thêm snapshot/tự động lưu và khôi phục khi app đóng đột ngột.
   - [ ] Kiểm thử phục hồi sau crash hoặc hệ điều hành thu hồi app.
 

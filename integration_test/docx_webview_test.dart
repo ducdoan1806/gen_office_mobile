@@ -9,7 +9,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:gen_office_mobile/features/editor/data/editor_asset_server.dart';
 import 'package:gen_office_mobile/features/editor/data/webview_document_editor_bridge.dart';
 import 'package:gen_office_mobile/features/editor/domain/editor_document.dart';
 import 'package:gen_office_mobile/features/editor/presentation/mobile_docx_editor_page.dart';
@@ -107,24 +106,13 @@ void main() {
     )).buffer.asUint8List();
     await repository().storeDocx('factory-demo.docx', originalBytes);
     final imported = (await repository().list()).single;
-    final bridge = WebViewDocumentEditorBridge(
-      server: EditorAssetServer(
-        persistExport: (name, bytes) async {
-          final saved = await repository().storeDocx(
-            name,
-            bytes,
-            isExport: true,
-          );
-          return EditorSaveResult(name: saved.name, path: saved.filePath!);
-        },
-      ),
-    );
+    late WebViewDocumentEditorBridge bridge;
     await tester.pumpWidget(
       MaterialApp(
         home: MobileDocxEditorPage(
           document: imported,
           documents: repository(),
-          bridge: bridge,
+          onBridgeCreated: (value) => bridge = value,
           onReady: () {
             if (!loaded.isCompleted) loaded.complete();
           },
@@ -242,12 +230,12 @@ void main() {
       );
       final result = await bridge.save();
       final restored = await repository().list();
-      expect(restored, hasLength(2));
+      expect(restored, hasLength(1));
+      expect(restored.single.id, imported.id);
       expect(
         restored.any((document) => document.filePath == result.path),
         true,
       );
-      expect(await File(imported.filePath!).readAsBytes(), originalBytes);
       expect(await File(result.path).exists(), true);
       final bytes = await File(result.path).readAsBytes();
       expect(bytes.length, greaterThan(100));
@@ -295,8 +283,131 @@ void main() {
       );
       expect(formatting, true);
       expect(bridge.error.value, isNull);
+      final secondSave = await bridge.save();
+      final afterSecondSave = await repository().list();
+      expect(afterSecondSave, hasLength(1));
+      expect(afterSecondSave.single.id, imported.id);
+      expect(afterSecondSave.single.filePath, secondSave.path);
+      expect(await File(secondSave.path).readAsBytes(), isNotEmpty);
     });
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });
+
+  testWidgets(
+    'Save follows the document opened inside the editor and Save As stays separate',
+    (tester) async {
+      final directory = await (await getTemporaryDirectory()).createTemp(
+        'save-current-docx-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final sample = await rootBundle.load('assets/samples/factory-demo.docx');
+      final sourceBytes = sample.buffer.asUint8List(
+        sample.offsetInBytes,
+        sample.lengthInBytes,
+      );
+      final secondSource = File('${directory.path}/second.docx');
+      await secondSource.writeAsBytes(sourceBytes);
+      final repository = LocalDocumentRepository(
+        documentsDirectory: () async => directory,
+      );
+      final first = await repository.storeDocx('first.docx', sourceBytes);
+      late WebViewDocumentEditorBridge bridge;
+      var ready = false;
+      var picks = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MobileDocxEditorPage(
+            document: first,
+            documents: repository,
+            onBridgeCreated: (value) => bridge = value,
+            onReady: () => ready = true,
+            pickDocument: () async {
+              picks++;
+              return XFile(secondSource.path);
+            },
+          ),
+        ),
+      );
+      await pumpUntil(tester, () => ready);
+      Future<void> append(String text) async {
+        await bridge.controller.runJavaScript('''
+        (() => {
+          const paragraph = document.querySelector('.ProseMirror p');
+          paragraph.closest('[contenteditable]').focus();
+          const range = document.createRange(); range.selectNodeContents(paragraph); range.collapse(false);
+          const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+          document.execCommand('insertText', false, ${jsonEncode(text)});
+        })();
+      ''');
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+      }
+
+      await tester.runAsync(() async {
+        await append(' — bản A');
+        await bridge.save();
+        expect(await bridge.hasUnsavedChanges(), false);
+      });
+      final savedA = (await repository.list()).single;
+      expect(savedA.id, first.id);
+      final aBytes = await File(savedA.filePath!).readAsBytes();
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('open-docx')));
+      await pumpUntil(tester, () => picks == 1);
+      await pumpUntil(
+        tester,
+        () =>
+            find.byType(AlertDialog).evaluate().isNotEmpty ||
+            find.textContaining('Lỗi:').evaluate().isNotEmpty ||
+            (find.text('second.docx').evaluate().isNotEmpty &&
+                tester
+                        .widget<IconButton>(find.byKey(const Key('save-docx')))
+                        .onPressed !=
+                    null),
+      );
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(find.textContaining('Lỗi:'), findsNothing);
+      await tester.runAsync(() async {
+        await append(' — bản B');
+        await bridge.save();
+        await bridge.save();
+      });
+      final documents = await repository.list();
+      expect(documents, hasLength(2));
+      final bDocument = documents.singleWhere(
+        (document) => document.name == 'second.docx',
+      );
+      final aDocument = documents.singleWhere(
+        (document) => document.id == first.id,
+      );
+      expect(await File(aDocument.filePath!).readAsBytes(), aBytes);
+      expect(await secondSource.readAsBytes(), sourceBytes);
+      final bZip = ZipDecoder().decodeBytes(
+        await File(bDocument.filePath!).readAsBytes(),
+      );
+      final bXml = utf8.decode(
+        bZip.findFile('word/document.xml')!.content as List<int>,
+      );
+      expect(bXml, contains('bản B'));
+      expect(bXml, isNot(contains('bản A')));
+      await tester.runAsync(() async {
+        final copied = bridge.server.saved.first;
+        await bridge.controller.runJavaScript(
+          'window.desktop.saveDocxAs("copy.docx",new Uint8Array(${jsonEncode(sourceBytes)}).buffer)',
+        );
+        await copied.timeout(const Duration(seconds: 15));
+        expect(await repository.list(), hasLength(3));
+        await bridge.save();
+        final afterCopySave = await repository.list();
+        expect(afterCopySave, hasLength(3));
+        expect(
+          afterCopySave.where((document) => document.name == 'copy.docx'),
+          hasLength(1),
+        );
+        expect(await File(aDocument.filePath!).readAsBytes(), aBytes);
+      });
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
 }

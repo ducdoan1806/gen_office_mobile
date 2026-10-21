@@ -84,4 +84,40 @@ void main() {
       expect(server.saveRevision, 1);
     },
   );
+
+  test(
+    'explicit Save As uses the copy handler while Save uses the current document',
+    () async {
+      await server.close();
+      var copies = 0;
+      server = EditorAssetServer(
+        bundle: TestBundle(),
+        persistExport: (name, bytes) async {
+          saves++;
+          return EditorSaveResult(name: name, path: '/app/current.docx');
+        },
+        persistCopy: (name, bytes) async {
+          copies++;
+          return EditorSaveResult(name: name, path: '/app/copy.docx');
+        },
+      );
+      await server.start();
+      for (final mode in ['', '&mode=copy']) {
+        final request = await client.postUrl(
+          server.baseUri.resolve('exports?name=report.docx$mode'),
+        );
+        request.headers.set('origin', server.baseUri.origin);
+        request.add([80, 75, 3, 4]);
+        final response = await request.close();
+        expect(response.statusCode, 200);
+        final result = jsonDecode(await utf8.decoder.bind(response).join());
+        expect(
+          result['path'],
+          mode.isEmpty ? '/app/current.docx' : '/app/copy.docx',
+        );
+      }
+      expect(saves, 1);
+      expect(copies, 1);
+    },
+  );
 }

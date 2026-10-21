@@ -7,7 +7,7 @@
 3. The mobile host installs the allowlisted `genOfficeMobile.receive` endpoint before the original renderer loads.
 4. The original React lifecycle emits readiness after its editor is mounted. Flutter sends correlated open/save/undo/redo/status commands.
 5. DOCX bytes are fetched from a tokenized document URL; no full-document base64 string crosses the JS channel.
-6. On save, original ProseMirror→DOCX serialization POSTs bytes to the local export endpoint. Flutter flushes a temporary file and renames it to the final export path before returning success. JS then completes the original save/reparse pipeline and returns the command result.
+6. On save, original ProseMirror→DOCX serialization POSTs bytes to the local export endpoint. Flutter writes the new bytes and commits the library metadata before acknowledging success. Normal Save updates the current library ID; Save As / a new document sends `mode=copy` to create a separate ID. JS then completes the original save/reparse pipeline and returns the command result.
 
 ## Protocol v1
 
@@ -26,7 +26,7 @@ iOS: NSAllowsLocalNetworking permits local resources. macOS additionally has cli
 ## Current behavior and limits
 
 - The app opens its persistent document library; both the library import button and editor folder button use native file_selector. Imported DOCX bytes are copied into app-private Documents before opening. Bundled samples remain available to tests.
-- Native save creates a new app-private export with library metadata. Imported and newly exported documents are listed after restart. No original file overwrite, user-selected destination or share sheet yet. See [document library](document-library.md).
+- Native Save updates the current library document and its modification time without adding a row. Save As creates a separate app-private export, then subsequent saves update that copy. The native host tracks the document most recently opened inside the editor. Source files outside the app remain unchanged, as requested. User-selected export destinations and share sheet are still pending. See [document library](document-library.md).
 - Flutter back/open checks the renderer's composite dirty state and asks before discarding.
 - Original toolbar download actions use native saving in mobile mode. Desktop print/image-picker integrations remain unavailable in mobile mode.
 - Recovery/autosave is not promised. 20 MB import / 32 MB export limits apply; saved files up to 32 MB can reopen from the library. Expanded OOXML memory also depends on upstream parsing.

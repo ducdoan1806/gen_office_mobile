@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -20,6 +21,149 @@ void main() {
   test('new library is empty without creating demo files', () async {
     expect(await repository.list(), isEmpty);
   });
+
+  test('saving twice updates one library item and survives restart', () async {
+    final original = await repository.storeDocx('Quy trình.docx', bytes);
+    final first = await repository.updateDocx(
+      original.id,
+      Uint8List.fromList([...bytes, 8]),
+    );
+    final latestBytes = Uint8List.fromList([...bytes, 9, 10]);
+    final second = await repository.updateDocx(original.id, latestBytes);
+    expect(first.id, original.id);
+    expect(second.name, original.name);
+    expect(second.createdAt, original.createdAt);
+    expect(second.updatedAt!.isBefore(original.createdAt!), false);
+    final restarted = LocalDocumentRepository(
+      documentsDirectory: () async => directory,
+    );
+    final loaded = (await restarted.list()).single;
+    expect(loaded.id, original.id);
+    expect(loaded.sizeBytes, latestBytes.length);
+    expect(loaded.updatedAt, second.updatedAt);
+    expect(await File(loaded.filePath!).readAsBytes(), latestBytes);
+    final retained = await File(loaded.filePath!).parent
+        .list()
+        .where((entity) => entity is File && entity.path.endsWith('.docx'))
+        .toList();
+    expect(retained, hasLength(2));
+  });
+
+  test(
+    'save targets the ID including older exports, never the display name',
+    () async {
+      final first = await repository.storeDocx('report.docx', bytes);
+      final second = await repository.storeDocx(
+        'report.docx',
+        bytes,
+        isExport: true,
+      );
+      final changed = Uint8List.fromList([...bytes, 42]);
+      final updated = await repository.updateDocx(second.id, changed);
+      final loaded = await repository.list();
+      expect(loaded, hasLength(2));
+      expect(loaded.first.id, second.id);
+      expect(await File(first.filePath!).readAsBytes(), bytes);
+      expect(await File(updated.filePath!).readAsBytes(), changed);
+    },
+  );
+
+  test('invalid saves preserve committed bytes and metadata', () async {
+    final document = await repository.storeDocx('report.docx', bytes);
+    final metadata = File(
+      '${File(document.filePath!).parent.path}/document.json',
+    );
+    final before = await metadata.readAsString();
+    await expectLater(
+      repository.updateDocx(document.id, Uint8List(0)),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repository.updateDocx(
+        document.id,
+        Uint8List(LocalDocumentRepository.maxExportBytes + 1),
+      ),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repository.updateDocx('../outside', bytes),
+      throwsArgumentError,
+    );
+    await expectLater(
+      repository.updateDocx('00000000000000000000000000000000', bytes),
+      throwsStateError,
+    );
+    expect(await metadata.readAsString(), before);
+    expect(await File(document.filePath!).readAsBytes(), bytes);
+    expect(await repository.list(), hasLength(1));
+  });
+
+  test(
+    'legacy metadata and abandoned writes keep the committed document readable',
+    () async {
+      final document = await repository.storeDocx('legacy.docx', bytes);
+      final folder = File(document.filePath!).parent;
+      final metadata = File('${folder.path}/document.json');
+      final legacy =
+          jsonDecode(await metadata.readAsString()) as Map<String, dynamic>;
+      legacy.remove('updatedAt');
+      await metadata.writeAsString(jsonEncode(legacy));
+      final abandoned = File(
+        '${folder.path}/content-11111111111111111111111111111111.docx',
+      );
+      await abandoned.writeAsBytes([0, 1, 2]);
+      final loaded = (await repository.list()).single;
+      expect(loaded.updatedAt, loaded.createdAt);
+      expect(await File(loaded.filePath!).readAsBytes(), bytes);
+      final updated = await repository.updateDocx(
+        document.id,
+        Uint8List.fromList([...bytes, 7]),
+      );
+      expect(await abandoned.exists(), false);
+      expect(await File(updated.filePath!).readAsBytes(), [...bytes, 7]);
+    },
+  );
+
+  test(
+    'simultaneous saves through repository instances keep one valid pointer',
+    () async {
+      final document = await repository.storeDocx('report.docx', bytes);
+      final other = LocalDocumentRepository(
+        documentsDirectory: () async => directory,
+      );
+      final changedA = Uint8List.fromList([...bytes, 1]);
+      final changedB = Uint8List.fromList([...bytes, 2]);
+      await Future.wait([
+        repository.updateDocx(document.id, changedA),
+        other.updateDocx(document.id, changedB),
+      ]);
+      final loaded = (await repository.list()).single;
+      expect(
+        await File(loaded.filePath!).readAsBytes(),
+        anyOf(equals(changedA), equals(changedB)),
+      );
+      expect(loaded.id, document.id);
+    },
+  );
+
+  test(
+    'metadata content filenames cannot read outside the document folder',
+    () async {
+      final document = await repository.storeDocx('report.docx', bytes);
+      final metadata = File(
+        '${File(document.filePath!).parent.path}/document.json',
+      );
+      final data =
+          jsonDecode(await metadata.readAsString()) as Map<String, dynamic>;
+      data['contentFile'] = '../../outside.docx';
+      await metadata.writeAsString(jsonEncode(data));
+      await expectLater(repository.list(), throwsFormatException);
+      await expectLater(
+        repository.updateDocx(document.id, bytes),
+        throwsFormatException,
+      );
+    },
+  );
 
   test('import owns its bytes and restores metadata after restart', () async {
     final source = File('${directory.path}/Quy trình.docx');

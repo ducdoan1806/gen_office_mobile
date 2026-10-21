@@ -8,6 +8,7 @@ class OfficeDocument {
     this.assetPath,
     this.filePath,
     this.createdAt,
+    this.updatedAt,
     this.sizeBytes,
   });
   final String id;
@@ -16,5 +17,6 @@ class OfficeDocument {
   final String? assetPath;
   final String? filePath;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
   final int? sizeBytes;
 }

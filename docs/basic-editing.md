@@ -1,6 +1,6 @@
 # Bước 4 — chỉnh sửa cơ bản trên mobile
 
-Editor tiếp tục dùng React/Tiptap và pipeline DOCX gốc. Không thay engine, không bật AI, không ghi đè tài liệu gốc.
+Editor tiếp tục dùng React/Tiptap và pipeline DOCX gốc. Không thay engine, không bật AI. Theo yêu cầu mới, Lưu cập nhật tài liệu trong thư viện; file nguồn ngoài app được giữ nguyên.
 
 ## Cải thiện giao diện
 
@@ -18,7 +18,7 @@ Editor tiếp tục dùng React/Tiptap và pipeline DOCX gốc. Không thay engi
 2. Nhập tiếng Việt, undo/redo, chọn chữ và dùng nút ribbon để định dạng nghiêng/gạch chân, căn giữa và chọn 18 pt.
 3. Sửa nội dung ô bảng có sẵn, thêm đoạn và chèn bảng 2×2 bằng menu của editor.
 4. Đọc ZIP/XML của DOCX đã lưu để xác nhận nội dung, `w:i`, `w:u`, `w:jc`, `w:sz=36`, số bảng và giữ custom XML.
-5. Mở lại file xuất, kiểm tra định dạng và nội dung bảng còn nguyên; bản nhập gốc không thay đổi.
+5. Mở lại tài liệu đã cập nhật, kiểm tra định dạng và nội dung bảng còn nguyên; Lưu nhiều lần vẫn chỉ có một mục thư viện.
 
 Các thao tác chọn chữ/nhập văn bản và bấm ribbon trong test được thực hiện qua DOM. Đây không phải kiểm thử bàn phím tiếng Việt, kéo chọn chữ hay thao tác cảm ứng bằng tay. Test có kiểm tra kích thước vùng bấm trên WebView.
 
@@ -45,7 +45,7 @@ Sau khi xong, dừng server bằng Ctrl+C và chạy `adb -s emulator-5554 rever
 
 ## Nghiệm thu còn lại
 
-Kết quả ngày 21/10/2026: 12 unit/widget test đạt; 4 test engine DOCX đạt; 2 integration test Android đạt (bao gồm định dạng và bảng, 50 giây). Bộ 6 tài liệu trong Downloads cũng đạt trên `emulator-5554` (80 giây): 5 tài liệu có bảng và ảnh, 1 tài liệu văn bản đơn giản. SHA-256 xác nhận cả 6 file nguồn không đổi. Tài liệu riêng và bản xuất QA không được commit vào Git.
+Kết quả ngày 21/10/2026: 19 unit/widget test đạt; 4 test engine DOCX đã đạt; 3 ca integration Android đã đạt, gồm định dạng/bảng, Lưu lặp lại một ID, chuyển tài liệu trong editor và Lưu thành bản mới. Bộ 6 tài liệu trong Downloads cũng đã đạt trên `emulator-5554` (80 giây): 5 tài liệu có bảng và ảnh, 1 tài liệu văn bản đơn giản. SHA-256 xác nhận cả 6 file nguồn không đổi. Tài liệu riêng và bản xuất QA không được commit vào Git.
 
 Browser e2e độc lập chưa chạy được trong sandbox Windows vì trình duyệt không kết nối được với runner; không ghi nhận chúng là đạt trong lần này. Các kiểm tra định dạng, bảng và OOXML nêu trên đã chạy trong Android WebView.
 

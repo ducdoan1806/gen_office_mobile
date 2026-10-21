@@ -146,8 +146,9 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                         document.format.name.toUpperCase(),
                         if (document.sizeBytes != null)
                           '${(document.sizeBytes! / 1024).ceil()} KB',
-                        if (document.createdAt != null)
-                          _date(document.createdAt!),
+                        if (document.updatedAt != null ||
+                            document.createdAt != null)
+                          _date(document.updatedAt ?? document.createdAt!),
                       ].join(' · '),
                     ),
                     trailing: const Icon(Icons.chevron_right),

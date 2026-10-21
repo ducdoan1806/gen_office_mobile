@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,9 +21,13 @@ class MobileDocxEditorPage extends StatefulWidget {
     this.onSaved,
     this.onReady,
     this.documents,
+    this.onBridgeCreated,
+    this.pickDocument = pickDocxFile,
   });
   final OfficeDocument document;
   final DocumentRepository? documents;
+  final ValueChanged<WebViewDocumentEditorBridge>? onBridgeCreated;
+  final Future<XFile?> Function() pickDocument;
 
   /// Injection point for device integration tests; normal UI owns its bridge.
   final WebViewDocumentEditorBridge? bridge;
@@ -39,6 +44,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   String? _error;
   String _status = 'Đang khởi động editor…';
   late String _name = widget.document.name;
+  late OfficeDocument _currentDocument = widget.document;
   late final DocumentRepository _documents =
       widget.documents ?? LocalDocumentRepository();
   bool get _supported =>
@@ -58,7 +64,16 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   }
 
   Future<EditorSaveResult> _persist(String name, Uint8List bytes) async {
+    final saved = _currentDocument.filePath == null
+        ? await _documents.storeDocx(name, bytes, isExport: true)
+        : await _documents.updateDocx(_currentDocument.id, bytes);
+    _currentDocument = saved;
+    return EditorSaveResult(name: saved.name, path: saved.filePath!);
+  }
+
+  Future<EditorSaveResult> _persistCopy(String name, Uint8List bytes) async {
     final saved = await _documents.storeDocx(name, bytes, isExport: true);
+    _currentDocument = saved;
     return EditorSaveResult(name: saved.name, path: saved.filePath!);
   }
 
@@ -66,13 +81,22 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
     final bridge =
         widget.bridge ??
         WebViewDocumentEditorBridge(
-          server: EditorAssetServer(persistExport: _persist),
+          server: EditorAssetServer(
+            persistExport: _persist,
+            persistCopy: _persistCopy,
+          ),
         );
     _bridge = bridge;
+    widget.onBridgeCreated?.call(bridge);
     bridge.onPickDocument = () => unawaited(_pick());
     _saved = bridge.server.saved.listen((result) {
       widget.onSaved?.call(result);
-      if (mounted) setState(() => _status = 'Đã lưu: ${result.path}');
+      if (mounted) {
+        setState(() {
+          _name = result.name;
+          _status = 'Đã lưu $_name';
+        });
+      }
     });
     try {
       await bridge.initialize();
@@ -149,7 +173,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   }
 
   Future<void> _pick() => _perform(() async {
-    final file = await pickDocxFile();
+    final file = await widget.pickDocument();
     if (file == null) return;
     if (await file.length() > EditorAssetServer.maxDocumentBytes) {
       throw StateError('DOCX vượt giới hạn 20 MB');
@@ -160,6 +184,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
     await _bridge!.open(
       EditorDocument(id: document.id, name: document.name, bytes: bytes),
     );
+    _currentDocument = document;
     if (mounted) {
       setState(() {
         _name = file.name;
