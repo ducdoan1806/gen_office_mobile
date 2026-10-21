@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,9 @@ import 'package:gen_office_mobile/features/editor/data/webview_document_editor_b
 import 'package:gen_office_mobile/features/editor/domain/editor_document.dart';
 import 'package:gen_office_mobile/features/editor/presentation/mobile_docx_editor_page.dart';
 import 'package:gen_office_mobile/features/documents/data/local_document_repository.dart';
+import 'package:gen_office_mobile/features/documents/presentation/document_library_page.dart';
+import 'package:gen_office_mobile/app/dependencies.dart';
+import 'package:gen_office_mobile/features/ai/data/mock_factory_ai_service.dart';
 
 Future<void> pumpUntil(WidgetTester tester, bool Function() predicate) async {
   for (var attempt = 0; attempt < 450; attempt++) {
@@ -25,6 +29,65 @@ Future<void> pumpUntil(WidgetTester tester, bool Function() predicate) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets(
+    'library import opens native WebView and refreshes after returning',
+    (tester) async {
+      final directory = await (await getTemporaryDirectory()).createTemp(
+        'genoffice-import-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final sample = await rootBundle.load('assets/samples/factory-demo.docx');
+      final source = File('${directory.path}/native-import.docx');
+      await source.writeAsBytes(
+        sample.buffer.asUint8List(sample.offsetInBytes, sample.lengthInBytes),
+      );
+      final repository = LocalDocumentRepository(
+        documentsDirectory: () async => directory,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DocumentLibraryPage(
+            dependencies: AppDependencies(
+              documents: repository,
+              ai: MockFactoryAiService(),
+            ),
+            // Supply only the picker result; import, navigation and WebView are real.
+            pickDocument: () async => XFile(source.path),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('import-docx')));
+      await pumpUntil(tester, () {
+        final save = find.byKey(const Key('save-docx'));
+        return save.evaluate().isNotEmpty &&
+            tester.widget<IconButton>(save).onPressed != null;
+      });
+      expect(find.byType(WebViewWidget), findsOneWidget);
+      expect(find.textContaining('Không nhập được DOCX'), findsNothing);
+      final imported = (await repository.list()).single;
+      expect(imported.name, 'native-import.docx');
+      expect(
+        await File(imported.filePath!).readAsBytes(),
+        await source.readAsBytes(),
+      );
+      await tester.pageBack();
+      await pumpUntil(
+        tester,
+        () =>
+            find.byKey(const Key('import-docx')).evaluate().isNotEmpty &&
+            find.byType(WebViewWidget).evaluate().isEmpty,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Tải lại'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('native-import.docx'), findsOneWidget);
+      expect(await repository.list(), hasLength(1));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
   testWidgets('native WebView opens, edits, saves and reopens DOCX', (
     tester,
   ) async {

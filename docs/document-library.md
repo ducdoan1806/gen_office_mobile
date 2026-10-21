@@ -33,7 +33,7 @@ Các bản xuất từ phiên bản cũ chưa có `document.json` vẫn được
 ## Kiểm chứng
 
 - Unit test: đọc lại metadata bằng repository mới, giữ bản nhập khi xóa nguồn, file trùng tên, bản xuất không ghi đè bản gốc, thư mục ghi dở, giới hạn nhập, tên chứa đường dẫn, di chuyển thư mục app và metadata hỏng.
-- Widget test: thư viện rỗng có nút nhập; tài liệu lưu trên đĩa hiển thị sau khi dựng lại app và repository.
-- Integration test đã đạt trên Android emulator `emulator-5554` ngày 21/10/2026: nhập DOCX mẫu vào kho, đọc bằng repository mới rồi mở WebView, sửa, undo/redo, lưu, đọc lại metadata bằng repository mới và mở lại nội dung bản xuất. Kiểm tra bản gốc không đổi. Build 34,5 giây, test 23 giây. Chưa chạy lại luồng mới trên iOS hoặc điện thoại thật; test này không thay thế kiểm tra đóng/mở tiến trình app thực tế.
+- Widget test: thư viện rỗng có nút nhập; tài liệu lưu trên đĩa hiển thị sau khi dựng lại app và repository. Có regression test nhập file → chuyển sang editor → quay lại → tải lại thư viện; đã tái hiện lỗi callback `setState` trả về Future trước khi sửa và đạt sau khi sửa. Tổng cộng 12 unit/widget test đạt.
+- Hai integration test đã đạt trên Android emulator `emulator-5554` ngày 21/10/2026 (36 giây): (1) bấm Nhập DOCX từ thư viện, mở WebView thật, quay lại và tải lại danh sách; (2) nhập DOCX mẫu vào kho, đọc bằng repository mới rồi mở WebView, sửa, undo/redo, lưu, đọc lại metadata bằng repository mới và mở lại nội dung bản xuất, kiểm tra bản gốc không đổi. Test (1) cung cấp kết quả chọn file qua injection, không tự thao tác hộp thoại file picker của Android. Chưa chạy lại luồng mới trên iOS hoặc điện thoại thật; test này không thay thế kiểm tra đóng/mở tiến trình app thực tế.
 
 Nghiệm thu trên điện thoại: nhập DOCX từ ứng dụng Files → chỉnh sửa và lưu → quay lại thư viện → đóng/mở lại app → mở bản nhập và bản lưu → đối chiếu nội dung. Thử thêm hủy chọn file và nhập hai file trùng tên.

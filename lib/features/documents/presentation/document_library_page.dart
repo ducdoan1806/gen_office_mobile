@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import '../../../app/dependencies.dart';
 import '../../editor/presentation/document_editor_page.dart';
@@ -7,8 +8,13 @@ import '../data/docx_file_picker.dart';
 import '../data/local_document_repository.dart';
 
 class DocumentLibraryPage extends StatefulWidget {
-  const DocumentLibraryPage({super.key, required this.dependencies});
+  const DocumentLibraryPage({
+    super.key,
+    required this.dependencies,
+    this.pickDocument = pickDocxFile,
+  });
   final AppDependencies dependencies;
+  final Future<XFile?> Function() pickDocument;
   @override
   State<DocumentLibraryPage> createState() => _DocumentLibraryPageState();
 }
@@ -19,7 +25,10 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       .list();
 
   void _reload() {
-    setState(() => _documents = widget.dependencies.documents.list());
+    final documents = widget.dependencies.documents.list();
+    setState(() {
+      _documents = documents;
+    });
   }
 
   Future<void> _open(OfficeDocument document) async {
@@ -43,7 +52,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     if (_importing) return;
     setState(() => _importing = true);
     try {
-      final file = await pickDocxFile();
+      final file = await widget.pickDocument();
       if (file == null) return;
       if (await file.length() > LocalDocumentRepository.maxImportBytes) {
         throw StateError('DOCX vượt giới hạn 20 MB.');
