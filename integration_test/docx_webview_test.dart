@@ -14,6 +14,7 @@ import 'package:gen_office_mobile/features/editor/domain/editor_document.dart';
 import 'package:gen_office_mobile/features/editor/presentation/mobile_docx_editor_page.dart';
 import 'package:gen_office_mobile/features/documents/data/local_document_repository.dart';
 import 'package:gen_office_mobile/features/documents/data/android_document_files.dart';
+import 'package:gen_office_mobile/features/editor/data/document_recovery_store.dart';
 import 'package:gen_office_mobile/features/documents/presentation/document_library_page.dart';
 import 'package:gen_office_mobile/app/dependencies.dart';
 import 'package:gen_office_mobile/features/ai/data/mock_factory_ai_service.dart';
@@ -93,6 +94,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: DocumentLibraryPage(
+            recoveryStore: DocumentRecoveryStore(
+              documentsDirectory: () async => directory,
+            ),
             dependencies: AppDependencies(
               documents: repository,
               ai: MockFactoryAiService(),
@@ -157,6 +161,9 @@ void main() {
         home: MobileDocxEditorPage(
           document: imported,
           documents: repository(),
+          recoveryStore: DocumentRecoveryStore(
+            documentsDirectory: () async => libraryDirectory,
+          ),
           onBridgeCreated: (value) => bridge = value,
           onReady: () {
             if (!loaded.isCompleted) loaded.complete();
@@ -381,6 +388,9 @@ void main() {
           home: MobileDocxEditorPage(
             document: first,
             documents: repository,
+            recoveryStore: DocumentRecoveryStore(
+              documentsDirectory: () async => directory,
+            ),
             onBridgeCreated: (value) => bridge = value,
             onReady: () => ready = true,
             pickDocument: () async {
@@ -466,6 +476,65 @@ void main() {
           hasLength(1),
         );
         expect(await File(aDocument.filePath!).readAsBytes(), aBytes);
+      });
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+  testWidgets(
+    'corrupt recovery requires explicit discard before opening original',
+    (tester) async {
+      final directory = await (await getTemporaryDirectory()).createTemp(
+        'corrupt-recovery-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final repository = LocalDocumentRepository(
+        documentsDirectory: () async => directory,
+      );
+      final recovery = DocumentRecoveryStore(
+        documentsDirectory: () async => directory,
+      );
+      final original = (await rootBundle.load(
+        'assets/samples/factory-demo.docx',
+      )).buffer.asUint8List();
+      final document = await repository.storeDocx(
+        'corrupt-recovery.docx',
+        original,
+      );
+      await recovery.write(
+        document,
+        original,
+        baseHash: DocumentRecoveryStore.hash(original),
+      );
+      final snapshot = (await recovery.find(document.id))!;
+      final metadata = File(
+        '${File(snapshot.contentPath).parent.path}/snapshot.json',
+      );
+      await metadata.writeAsString('{"version":999}', flush: true);
+      var ready = false;
+      late WebViewDocumentEditorBridge bridge;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MobileDocxEditorPage(
+            document: document,
+            documents: repository,
+            recoveryStore: recovery,
+            onReady: () => ready = true,
+            onBridgeCreated: (value) => bridge = value,
+          ),
+        ),
+      );
+      await pumpUntil(
+        tester,
+        () => find.text('Không đọc được bản tạm').evaluate().isNotEmpty,
+      );
+      expect(await metadata.exists(), true);
+      await tester.tap(find.text('Bỏ bản tạm, mở gốc'));
+      await pumpUntil(tester, () => ready);
+      await tester.runAsync(() async {
+        expect(await bridge.hasUnsavedChanges(), false);
+        expect(await recovery.list(), isEmpty);
+        expect(await File(document.filePath!).readAsBytes(), original);
       });
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();

@@ -396,6 +396,7 @@ import {
   printDoc as printDocImpl,
   save as saveImpl,
   writeRecoveryCopy as writeRecoveryCopyImpl,
+  captureMobileRecovery,
   type FileActionContext,
   type PendingPdfExport,
 } from './file-actions'
@@ -1886,7 +1887,7 @@ export function App() {
   // copy to the main process every 30s; a normal save (or discarding on close) removes
   // it, and reopening the file offers Restore/Discard when a newer copy exists.
   useEffect(() => {
-    if (tornDown) return
+    if (tornDown || document.documentElement.dataset.host === 'mobile') return
     const timer = window.setInterval(() => {
       void writeRecoveryCopyImpl(fileCtxRef.current)
     }, 30_000)
@@ -2310,6 +2311,7 @@ export function App() {
               if (outcome !== 'ok') throw new Error(`DOCX open failed: ${outcome}`)
               break
             }
+            case 'snapshot': value = await captureMobileRecovery(fileCtxRef.current); break
             case 'save':
               if (!(await save(false))) throw new Error('DOCX save failed')
               break

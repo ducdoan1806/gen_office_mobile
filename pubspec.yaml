@@ -37,6 +37,7 @@ dependencies:
   webview_flutter: ^4.13.1
   file_selector: ^1.1.0
   path_provider: ^2.1.5
+  crypto: ^3.0.7
 
 dev_dependencies:
   archive: ^3.6.1

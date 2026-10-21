@@ -4,6 +4,12 @@ Cập nhật: 21/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
+## Các mục tạm hoãn theo yêu cầu
+
+- **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
+- **Nghiệm thu DOCX trên điện thoại thật và đối chiếu Microsoft Word:** tiếp tục tạm hoãn các mục tương ứng ở bước 2, 4, 8 và mốc DOCX đầu tiên. Các mục này vẫn để chưa hoàn thành.
+- **AI:** tiếp tục tạm hoãn như đã thống nhất.
+
 ## Lộ trình đã thống nhất
 
 - [x] **Bước 1. Tách editor DOCX khỏi Electron**
@@ -31,18 +37,18 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Kiểm thử bộ 6 DOCX do chủ dự án cung cấp trên Android emulator: lưu nguyên trạng giữ nguyên các phần ZIP; sửa/lưu/mở lại đạt, ảnh/style/header/footer/liên kết và các phần không chỉnh sửa được giữ nguyên. SHA-256 của 6 file nguồn không đổi.
   - [ ] Nghiệm thu đầy đủ trên điện thoại thật với bộ DOCX nhà máy, đối chiếu định dạng Word.
 
-- [ ] **Bước 5. Lưu, xuất và chia sẻ DOCX**
+- [ ] **Bước 5. Lưu, xuất và chia sẻ DOCX — TẠM HOÃN phần còn lại**
   - [x] Android Lưu cập nhật file nguồn đã chọn; Lưu thành bản mới chọn đích bằng ACTION_CREATE_DOCUMENT.
   - [x] Kiểm thử lưu native và mở lại file kết quả.
   - [x] Cảnh báo thay đổi chưa lưu khi quay lại/mở file khác.
   - [ ] Thêm share sheet; chọn nơi xuất trên iOS/macOS.
   - [ ] Kiểm tra file kết quả bằng Microsoft Word với tài liệu thực tế.
 
-- [ ] **Bước 6. Thêm undo/redo và khôi phục phiên**
+- [x] **Bước 6. Thêm undo/redo và khôi phục phiên**
   - [x] Nối và kiểm thử undo/redo.
   - [x] Android giữ URI và quyền truy cập file nguồn qua các lần khởi động; chỉ báo Lưu thành công sau khi ghi/đọc xác minh nguồn.
-  - [ ] Thêm snapshot/tự động lưu và khôi phục khi app đóng đột ngột.
-  - [ ] Kiểm thử phục hồi sau crash hoặc hệ điều hành thu hồi app.
+  - [x] Tạo bản tạm DOCX mỗi 5 giây và khi chuyển nền; khôi phục qua màn hình chính, giữ dirty cho đến khi Lưu vào nguồn.
+  - [x] Kiểm thử phục hồi mất tiến trình bằng force-stop Android rồi chạy tiến trình mới; kiểm tra nguồn thay đổi, lỗi/hủy Lưu và dọn bản tạm sau Lưu thành công. Đây là mô phỏng crash/thu hồi app trên emulator, chưa ép crash native/LMK thật. Xem [khôi phục phiên](session-recovery.md).
 
 - [ ] **Bước 7. Tích hợp PDF viewer**
   - [ ] Mở và hiển thị PDF thật.
@@ -79,6 +85,8 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Nghiệm thu luồng nhập → đóng/mở lại app → mở từ thư viện trên điện thoại thật ở bước 2/8, rồi hoàn thiện các mục thiếu của bước 4–6. Bước 3 đã có lưu trữ lâu dài và metadata. Giữ nguyên số bước dù một số phần đã được làm sớm, chẳng hạn iOS.
+Bước 6 đã hoàn thành trong luồng DOCX hiện tại trên Android emulator: bản tạm, khôi phục ở tiến trình mới, xử lý lỗi lưu và dọn bản tạm. Khi tiếp tục phát triển, ưu tiên **bước 7** (PDF viewer), rồi các mục còn thiếu của **bước 9** (XLSX, PPTX và iOS).
+
+Chưa tiếp tục bước 5, các mục nghiệm thu điện thoại thật/Word đang hoãn hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
 Đây là tổng hợp kết quả kiểm thử đã ghi nhận, không phải lần chạy lại test. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md) và [build iOS](ios-build.md).

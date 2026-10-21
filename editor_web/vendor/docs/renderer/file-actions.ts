@@ -910,6 +910,21 @@ export async function writeRecoveryCopy(ctx: FileActionContext): Promise<void> {
   }
 }
 
+/** Mobile checkpoints serialize a full DOCX without save/reparse or clearing dirty. */
+export async function captureMobileRecovery(ctx: FileActionContext): Promise<boolean> {
+  if (!ctx.doc || !ctx.editor || !ctx.doc.filePath || ctx.saveInFlightRef.current) return false
+  if (ctx.editor.view.composing || isPhasedContentPending()) return false
+  window.dispatchEvent(new Event('ai-docs-commit-tables'))
+  if (!isDocDirty(ctx)) return false
+  const generation = docGeneration
+  const bytes = await buildDocBytes(ctx)
+  if (!bytes || generation !== docGeneration || ctx.saveInFlightRef.current) return false
+  const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+  const result = await window.desktop.writeRecoveryCopy(ctx.doc.filePath, buffer)
+  if (!result.ok) throw new Error('Không ghi được bản tạm khôi phục')
+  return true
+}
+
 const runSerializedSave = createSaveSerializer()
 
 /**
