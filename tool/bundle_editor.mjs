@@ -10,6 +10,11 @@ if(!process.argv.includes('--no-build')) {
  if(result.status!==0)process.exit(result.status??1);
 }
 const destination=join(root,'assets/editor');mkdirSync(destination,{recursive:true});
+// Vite can retain mixed CRLF/LF from HTML inputs on Windows. Keep packaged
+// entrypoints and their manifest hashes deterministic across host platforms.
+for(const name of readdirSync(join(editor,'dist')).filter(name=>name.endsWith('.html'))) {
+ const entry=join(editor,'dist',name);writeFileSync(entry,readFileSync(entry,'utf8').replace(/\r\n?/g,'\n'));
+}
 // assets/editor/assets is generated output owned solely by this bundler.
 const generatedAssets=join(destination,'assets');
 if(existsSync(generatedAssets))for(const name of readdirSync(generatedAssets)) {

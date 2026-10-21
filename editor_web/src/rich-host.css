@@ -25,3 +25,37 @@ html[data-host="mobile"] .ribbon-tab {
 html[data-host="mobile"] .ribbon-body {overflow-x:auto;}
 html[data-host="mobile"] .ProseMirror {caret-color:auto;}
 html[data-host="mobile"] body {overscroll-behavior:none;}
+
+/* Keep the existing editor commands and horizontal ribbon, with targets that
+   can be selected by touch. Two control rows must fit without vertical clips. */
+html[data-host="mobile"] .ribbon-body {height:116px;}
+html[data-host="mobile"] .ribbon-compact .ribbon-body {height:58px;}
+html[data-host="mobile"] .ribbon-tab,
+html[data-host="mobile"] .rb-icon,
+html[data-host="mobile"] .rb-big,
+html[data-host="mobile"] .rb-caret,
+html[data-host="mobile"] .rb-big-split-caret {
+  min-width:44px;
+  min-height:44px;
+}
+html[data-host="mobile"] .rb-icon,
+html[data-host="mobile"] .rb-caret,
+html[data-host="mobile"] .rb-select {
+  height:44px;
+}
+html[data-host="mobile"] .rb-select {
+  min-height:44px;
+  font-size:16px;
+}
+html[data-host="mobile"] .rb-font-size {width:60px;}
+html[data-host="mobile"] .table-picker {
+  max-width:calc(100vw - 24px);
+  max-height: min(60dvh, 480px);
+  overflow:auto;
+}
+html[data-host="mobile"] .table-picker-grid {
+  grid-template-columns:repeat(10,44px);
+  width:max-content;
+}
+html[data-host="mobile"] .table-cell {width:44px;height:44px;}
+html[data-host="mobile"] .table-picker-custom {min-height:44px;}

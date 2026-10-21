@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -149,6 +151,95 @@ void main() {
       expect(undone.toString(), isNot(contains('kiểm thử mobile')));
       await bridge.redo();
       expect(await bridge.hasUnsavedChanges(), true);
+      // Exercise the real ribbon commands on the selected paragraph, rather
+      // than invoking formatting commands directly on the Tiptap instance.
+      await bridge.controller.runJavaScript("""
+        (() => {
+        const paragraph = document.querySelector('.ProseMirror p');
+        paragraph.closest('[contenteditable]').focus();
+        const range = document.createRange(); range.selectNodeContents(paragraph);
+        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+        })();
+      """);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      for (final label in ['In nghiêng', 'Gạch chân', 'Căn giữa']) {
+        await bridge.controller.runJavaScript(
+          'document.querySelector(\'button[aria-label^="$label"]\').click()',
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+      }
+      await bridge.controller.runJavaScript(
+        "document.querySelector('.rb-font-size').closest('.rb-split-wrap').querySelector('button').click()",
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await bridge.controller.runJavaScript("""
+        (() => {
+        const option = [...document.querySelectorAll('.rb-font-size-menu button')].find(button => button.textContent.trim() === '18');
+        if (!option) throw new Error('Font size 18 option is unavailable');
+        option.click();
+        })();
+      """);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await bridge.controller.runJavaScript("""
+        (() => {
+        const cell = document.querySelector('.ProseMirror td p');
+        cell.closest('[contenteditable]').focus();
+        const range = document.createRange(); range.selectNodeContents(cell); range.collapse(false);
+        const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+        document.execCommand('insertText', false, ' — ca sản xuất 2');
+        })();
+      """);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(
+        (await bridge.controller.runJavaScriptReturningResult(
+          "document.querySelector('.ProseMirror').textContent",
+        )).toString(),
+        contains('ca sản xuất 2'),
+      );
+      final touchTargets = await bridge.controller.runJavaScriptReturningResult(
+        """
+        [...document.querySelectorAll('button[aria-label^="In nghiêng"], button[aria-label^="Gạch chân"], button[aria-label^="Căn giữa"]')]
+          .every(button => { const box = button.getBoundingClientRect(); return box.width >= 44 && box.height >= 44; })
+      """,
+      );
+      expect(touchTargets, true);
+      await bridge.controller.runJavaScript("""
+        (() => {
+          const paragraph = document.querySelector('.ProseMirror p');
+          paragraph.closest('[contenteditable]').focus();
+          const range = document.createRange(); range.selectNodeContents(paragraph); range.collapse(false);
+          const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+          document.execCommand('insertParagraph');
+          document.execCommand('insertText', false, 'Biểu mẫu ca mới');
+          [...document.querySelectorAll('.ribbon-tab')].find(button => button.textContent.trim() === 'Chèn').click();
+        })();
+      """);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await bridge.controller.runJavaScript(
+        "document.querySelector('button[data-tip=\"Chèn bảng\"]').click()",
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      final gridTarget = await bridge.controller.runJavaScriptReturningResult(
+        """
+        (() => { const box = document.querySelector('.table-cell[data-rows="2"][data-columns="2"]').getBoundingClientRect(); return box.width >= 44 && box.height >= 44; })()
+      """,
+      );
+      expect(gridTarget, true);
+      await bridge.controller.runJavaScript(
+        "document.querySelector('.table-cell[data-rows=\"2\"][data-columns=\"2\"]').click()",
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      final tableCount = await bridge.controller.runJavaScriptReturningResult(
+        "document.querySelectorAll('.ProseMirror table').length",
+      );
+      expect(tableCount, 2);
+      expect(
+        (await bridge.controller.runJavaScriptReturningResult(
+          "document.querySelector('.ProseMirror').textContent",
+        )).toString(),
+        contains('ca sản xuất 2'),
+      );
       final result = await bridge.save();
       final restored = await repository().list();
       expect(restored, hasLength(2));
@@ -160,6 +251,23 @@ void main() {
       expect(await File(result.path).exists(), true);
       final bytes = await File(result.path).readAsBytes();
       expect(bytes.length, greaterThan(100));
+      final archive = ZipDecoder().decodeBytes(bytes);
+      final xml = utf8.decode(
+        archive.findFile('word/document.xml')!.content as List<int>,
+      );
+      expect(xml, contains('ca sản xuất 2'));
+      expect(xml, contains('Biểu mẫu ca mới'));
+      expect(xml, matches(RegExp(r'<w:i(?:\s|/|>)')));
+      expect(xml, matches(RegExp(r'<w:u\b')));
+      expect(xml, matches(RegExp(r'<w:jc\b[^>]*w:val="center"')));
+      expect(xml, matches(RegExp(r'<w:sz\b[^>]*w:val="36"')));
+      expect(RegExp(r'<w:tbl[\s>]').allMatches(xml), hasLength(2));
+      final sourceArchive = ZipDecoder().decodeBytes(originalBytes);
+      for (final entry in sourceArchive.files.where(
+        (file) => file.name.startsWith('customXml/'),
+      )) {
+        expect(archive.findFile(entry.name)?.content, entry.content);
+      }
       await bridge.open(
         EditorDocument(id: 'reopened', name: result.name, bytes: bytes),
       );
@@ -167,6 +275,25 @@ void main() {
         "document.querySelector('.ProseMirror').textContent",
       );
       expect(text.toString(), contains('kiểm thử mobile'));
+      expect(text.toString(), contains('ca sản xuất 2'));
+      expect(text.toString(), contains('Biểu mẫu ca mới'));
+      expect(
+        await bridge.controller.runJavaScriptReturningResult(
+          "document.querySelectorAll('.ProseMirror table').length",
+        ),
+        2,
+      );
+      final formatting = await bridge.controller.runJavaScriptReturningResult(
+        """
+        (() => {
+          const paragraph = document.querySelector('.ProseMirror p');
+          return getComputedStyle(paragraph).textAlign === 'center'
+            && paragraph.querySelector('em, i, [style*="italic"]') !== null
+            && paragraph.querySelector('u, [style*="underline"]') !== null;
+        })()
+      """,
+      );
+      expect(formatting, true);
       expect(bridge.error.value, isNull);
     });
     await tester.pumpWidget(const SizedBox.shrink());

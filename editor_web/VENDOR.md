@@ -10,6 +10,7 @@ Integration changes to upstream source:
 1. `vendor/docs/renderer/App.tsx`: AI sidebar initially closed and disabled for the browser host; allowlisted host command hook calls original open/save/undo/redo and reports readiness.
 2. `vendor/docs/renderer/doc-bytes.ts`: release one-shot Blob handoff URLs after fetch.
 3. `vendor/docs/renderer/editor/shape-svg.ts`: replace a monorepo-relative import with its package export.
+4. `vendor/docs/renderer/components/Ribbon.tsx`: expose pressed states for text marks and paragraph alignment. `ribbon-insert-tab.tsx`: label table-size choices for accessibility.
 
 Build aliases replace the AiPanel module with src/platform/disabled-ai-panel.tsx and select browser-only package exports. Source engine files remain unchanged. The browser host adapter and rich-main entrypoint are new integration code. The original desktop App is used; it is not replaced by a rewritten editor.
 

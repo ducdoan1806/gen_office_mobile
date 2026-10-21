@@ -27,6 +27,8 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
   - [x] Tích hợp sửa nội dung, định dạng chữ, đoạn và bảng từ editor gốc.
   - [x] Có kiểm thử engine/browser cho định dạng và bảng, kiểm thử mobile cho sửa nội dung.
+  - [x] Cải thiện vùng bấm mobile; kiểm thử Android WebView cho định dạng nghiêng/gạch chân, cỡ chữ 18 pt, căn giữa, sửa ô bảng và chèn bảng 2×2; đối chiếu XML DOCX và mở lại kết quả. Xem [chỉnh sửa cơ bản](basic-editing.md).
+  - [x] Kiểm thử bộ 6 DOCX do chủ dự án cung cấp trên Android emulator: lưu nguyên trạng giữ nguyên các phần ZIP; sửa/lưu/mở lại đạt, ảnh/style/header/footer/liên kết và các phần không chỉnh sửa được giữ nguyên. SHA-256 của 6 file nguồn không đổi.
   - [ ] Nghiệm thu đầy đủ trên điện thoại thật với bộ DOCX nhà máy, đối chiếu định dạng Word.
 
 - [ ] **Bước 5. Lưu, xuất và chia sẻ DOCX**
