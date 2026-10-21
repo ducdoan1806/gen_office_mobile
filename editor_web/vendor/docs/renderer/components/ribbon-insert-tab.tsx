@@ -815,6 +815,9 @@ export function InsertTab({
                       <button
                         key={`${ri}-${ci}`}
                         className={`table-cell ${ri < grid.r && ci < grid.c ? 'hot' : ''}`}
+                        aria-label={t('ribbonTableSize', { r: ri + 1, c: ci + 1 })}
+                        data-rows={ri + 1}
+                        data-columns={ci + 1}
                         onMouseEnter={() => setGrid({ r: ri + 1, c: ci + 1 })}
                         onClick={() => insertTable(ri + 1, ci + 1)}
                       />

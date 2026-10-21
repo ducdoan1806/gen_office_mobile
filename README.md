@@ -2,7 +2,7 @@
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
-Hiện đã tích hợp DOCX trên Android: mở file, sửa văn bản/định dạng/bảng, undo/redo và lưu thành file mới. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX, PPTX và PDF chưa tích hợp editor thực tế.
+Hiện đã tích hợp DOCX trên Android: mở file, sửa văn bản/định dạng/bảng, undo/redo và lưu trực tiếp file gốc trên Android. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX, PPTX và PDF chưa tích hợp editor thực tế.
 
 ## 1. Chuẩn bị môi trường
 
@@ -63,13 +63,13 @@ Nếu chỉ kết nối một thiết bị phù hợp, có thể dùng `flutter 
 
 ### Thử chỉnh sửa DOCX
 
-1. Chọn **Quy trình vận hành.docx** trên màn hình thư viện để mở file mẫu có sẵn.
+1. Bấm **Mở DOCX**, chọn file trong Downloads hoặc thư mục khác bằng trình chọn tệp Android.
 2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn file `.docx` khác từ thiết bị.
 3. Chỉnh sửa trong editor; thanh menu có thể cuộn ngang và nhãn không xuống dòng.
 4. Dùng các nút **undo/redo** để hoàn tác/làm lại.
-5. Bấm biểu tượng **lưu** để lưu một file DOCX mới. Dòng trạng thái hiển thị đường dẫn file sau khi ghi thành công.
+5. Bấm biểu tượng **lưu** để cập nhật chính file đã chọn. Dòng trạng thái xác nhận lưu vào file gốc khi ghi và đọc lại xác minh thành công.
 
-File được lưu trong vùng Documents riêng của ứng dụng, dưới `GenOffice/exports`. File gốc được chọn không bị ghi đè. Hiện chưa có share sheet, chọn thư mục xuất hoặc danh sách file đã lưu trên màn hình thư viện; dữ liệu mẫu của thư viện chưa phải thư viện lưu trữ đầy đủ.
+Android giữ quyền đọc/ghi của file đã chọn qua Storage Access Framework. Danh sách gần đây lưu liên kết đến file gốc; khi mở lại, app đọc nội dung từ file đó. Các bản sao được nhập bằng phiên bản cũ cần mở lại file gốc bằng **Mở DOCX**, hoặc chọn lại file gốc ở lần Lưu đầu tiên. **Lưu thành bản mới** mở trình chọn nơi lưu của Android. iOS/macOS vẫn dùng cơ chế bản sao riêng; share sheet chưa triển khai.
 
 ## 4. Build APK và cài lên điện thoại
 

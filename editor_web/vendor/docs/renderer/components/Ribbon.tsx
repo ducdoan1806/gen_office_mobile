@@ -1967,6 +1967,7 @@ function RibbonInner({
       disabled={!canEdit}
       data-tip={title}
       aria-label={title}
+      aria-pressed={active}
       onClick={() => chain().toggleMark(name).run()}
     >
       {label}
@@ -3903,6 +3904,7 @@ function RibbonInner({
                     disabled={!canEdit}
                     data-tip={t('ribbonAlignLeftTip')}
                     aria-label={t('ribbonAlignLeftTip')}
+                    aria-pressed={activeAlign === 'left'}
                     onClick={() => setSelectionAlign(ed, 'left')}
                   >
                     <IconAlignLeft />
@@ -3912,6 +3914,7 @@ function RibbonInner({
                     disabled={!canEdit}
                     data-tip={t('ribbonAlignCenterTip')}
                     aria-label={t('ribbonAlignCenterTip')}
+                    aria-pressed={activeAlign === 'center'}
                     onClick={() => setSelectionAlign(ed, 'center')}
                   >
                     <IconAlignCenter />
@@ -3921,6 +3924,7 @@ function RibbonInner({
                     disabled={!canEdit}
                     data-tip={t('ribbonAlignRightTip')}
                     aria-label={t('ribbonAlignRightTip')}
+                    aria-pressed={activeAlign === 'right'}
                     onClick={() => setSelectionAlign(ed, 'right')}
                   >
                     <IconAlignRight />
@@ -3930,6 +3934,7 @@ function RibbonInner({
                     disabled={!canEdit}
                     data-tip={t('ribbonJustifyTip')}
                     aria-label={t('ribbonJustifyTip')}
+                    aria-pressed={activeAlign === 'justify'}
                     onClick={() => setSelectionAlign(ed, 'justify')}
                   >
                     <IconAlignJustify />

@@ -12,11 +12,15 @@ typedef PersistEditorExport =
 /// Serves only bundled assets and one document, on loopback and a random path.
 /// No arbitrary filesystem paths, remote fetching or JS evaluation endpoint.
 class EditorAssetServer {
-  EditorAssetServer({required this.persistExport, AssetBundle? bundle})
-    : _bundle = bundle ?? rootBundle;
+  EditorAssetServer({
+    required this.persistExport,
+    this.persistCopy,
+    AssetBundle? bundle,
+  }) : _bundle = bundle ?? rootBundle;
   static const maxDocumentBytes = 20 * 1024 * 1024;
   static const maxExportBytes = 32 * 1024 * 1024;
   final PersistEditorExport persistExport;
+  final PersistEditorExport? persistCopy;
   final AssetBundle _bundle;
   HttpServer? _server;
   late Uri _base;
@@ -43,8 +47,10 @@ class EditorAssetServer {
   }
 
   Uri provideDocument(EditorDocument document) {
-    if (document.bytes.length > maxDocumentBytes) {
-      throw ArgumentError('DOCX vượt giới hạn 20 MB');
+    // Native imports remain limited to 20 MB. A saved document can grow to
+    // the export limit and must still be reopenable from the library.
+    if (document.bytes.length > maxExportBytes) {
+      throw ArgumentError('DOCX vượt giới hạn 32 MB');
     }
     if (!document.name.toLowerCase().endsWith('.docx')) {
       throw ArgumentError('Chỉ hỗ trợ DOCX');
@@ -109,7 +115,10 @@ class EditorAssetServer {
           final name = raw
               .replaceAll(RegExp(r'[^a-zA-Z0-9À-ỹ ._()-]'), '_')
               .replaceAll(RegExp(r'^\.+'), '');
-          final result = await persistExport(
+          final persist = request.uri.queryParameters['mode'] == 'copy'
+              ? (persistCopy ?? persistExport)
+              : persistExport;
+          final result = await persist(
             name.toLowerCase().endsWith('.docx') ? name : '$name.docx',
             bytes,
           );
@@ -149,13 +158,18 @@ class EditorAssetServer {
       response.add(
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
       );
-    } catch (_) {
+    } catch (error) {
       response.statusCode = HttpStatus.internalServerError;
       response.headers.contentType = ContentType.json;
       response.write(
         jsonEncode({
           'ok': false,
-          'error': 'Không đọc hoặc ghi được dữ liệu editor.',
+          'error': error is PlatformException
+              ? error.message ??
+                    'Không truy cập được file gốc. Hãy mở lại file.'
+              : error is StateError
+              ? error.message
+              : 'Không đọc hoặc ghi được dữ liệu editor.',
         }),
       );
     } finally {

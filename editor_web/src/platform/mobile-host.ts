@@ -43,20 +43,22 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
      send({type:'reply',id:command.id,ok:true,value});
    } catch(error) { send({type:'reply',id:command.id,ok:false,error:String(error)}); }
  }};
- const save=async (name:string,data:ArrayBuffer,auto=false)=>{
+ const save=async (name:string,data:ArrayBuffer,auto=false,copy=false)=>{
    if(auto)return {ok:false,error:'Use manual save in mobile host'};
    try {
      const url=new URL('exports',base);url.searchParams.set('name',name);
+     if(copy)url.searchParams.set('mode','copy');
      const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:data});
      const result=await response.json();
      if(!response.ok || !result.ok)throw new Error(result.error || 'Native save failed');
+     currentName=result.name;
      send({type:'saved',name:result.name,path:result.path});
      return {ok:true,path:`mobile://saved/${encodeURIComponent(result.name)}`};
    }catch(error){return {ok:false,error:String(error)};}
  };
  host.api.saveDocx=(path:string,data:ArrayBuffer,auto:boolean)=>save(currentName,data,auto);
- host.api.saveDocxAs=(name:string,data:ArrayBuffer)=>save(name,data);
- host.api.saveDocxNew=(name:string,data:ArrayBuffer)=>save(name,data);
+ host.api.saveDocxAs=(name:string,data:ArrayBuffer)=>save(name,data,false,true);
+ host.api.saveDocxNew=(name:string,data:ArrayBuffer)=>save(name,data,false,true);
  // Native Flutter owns file selection and discard confirmation.
  host.api.openDocx=async()=>{send({type:'pickDocument'});return null;};
  host.api.confirmDocumentReplace=async()=>{send({type:'confirmRequired'});return false;};

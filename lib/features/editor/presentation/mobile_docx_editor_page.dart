@@ -4,9 +4,12 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../documents/domain/office_document.dart';
+import '../../documents/domain/document_repository.dart';
+import '../../documents/data/local_document_repository.dart';
+import '../../documents/data/docx_file_picker.dart';
+import '../../documents/data/android_document_files.dart';
 import '../data/editor_asset_server.dart';
 import '../data/webview_document_editor_bridge.dart';
 import '../domain/editor_document.dart';
@@ -18,8 +21,14 @@ class MobileDocxEditorPage extends StatefulWidget {
     this.bridge,
     this.onSaved,
     this.onReady,
+    this.documents,
+    this.onBridgeCreated,
+    this.pickDocument = pickDocxFile,
   });
   final OfficeDocument document;
+  final DocumentRepository? documents;
+  final ValueChanged<WebViewDocumentEditorBridge>? onBridgeCreated;
+  final Future<XFile?> Function() pickDocument;
 
   /// Injection point for device integration tests; normal UI owns its bridge.
   final WebViewDocumentEditorBridge? bridge;
@@ -33,9 +42,14 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   WebViewDocumentEditorBridge? _bridge;
   StreamSubscription<EditorSaveResult>? _saved;
   bool _viewCreated = false, _busy = true, _allowPop = false;
+  bool _saving = false;
+  bool get _working => _busy || _saving;
   String? _error;
   String _status = 'Đang khởi động editor…';
   late String _name = widget.document.name;
+  late OfficeDocument _currentDocument = widget.document;
+  late final DocumentRepository _documents =
+      widget.documents ?? LocalDocumentRepository();
   bool get _supported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -52,30 +66,92 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
     }
   }
 
-  Future<EditorSaveResult> _persist(String name, Uint8List bytes) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final exports = Directory('${directory.path}/GenOffice/exports');
-    await exports.create(recursive: true);
-    final output = File(
-      '${exports.path}/${DateTime.now().microsecondsSinceEpoch}-$name',
+  Future<EditorSaveResult> _saveLocked(
+    Future<EditorSaveResult> Function() action,
+  ) async {
+    if (_saving) throw StateError('Đang lưu tài liệu. Vui lòng chờ.');
+    if (mounted) setState(() => _saving = true);
+    try {
+      return await action();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<EditorSaveResult> _persist(String name, Uint8List bytes) =>
+      _saveLocked(() => _persistCurrent(name, bytes));
+
+  Future<EditorSaveResult> _persistCopy(String name, Uint8List bytes) =>
+      _saveLocked(() => _persistNewCopy(name, bytes));
+
+  Future<EditorSaveResult> _persistCurrent(String name, Uint8List bytes) async {
+    String? sourceUri = _currentDocument.sourceUri;
+    if (Platform.isAndroid && sourceUri == null) {
+      if (mounted) setState(() => _status = 'Chọn file gốc để lưu thay đổi');
+      final target = await const AndroidDocumentFiles().pick();
+      if (target == null) throw StateError('Chưa lưu: bạn chưa chọn file gốc.');
+      sourceUri = target.sourceUri;
+    }
+    if (_currentDocument.filePath == null && sourceUri != null) {
+      await const AndroidDocumentFiles().write(sourceUri, bytes);
+    }
+    final saved = _currentDocument.filePath == null
+        ? await _documents.storeDocx(
+            name,
+            bytes,
+            isExport: true,
+            sourceUri: sourceUri,
+          )
+        : await _documents.updateDocx(
+            _currentDocument.id,
+            bytes,
+            sourceUri: sourceUri,
+          );
+    _currentDocument = saved;
+    return EditorSaveResult(name: saved.name, path: saved.filePath!);
+  }
+
+  Future<EditorSaveResult> _persistNewCopy(String name, Uint8List bytes) async {
+    String? sourceUri;
+    if (Platform.isAndroid) {
+      final target = await const AndroidDocumentFiles().pick(createName: name);
+      if (target == null) throw StateError('Đã hủy lưu bản sao.');
+      await const AndroidDocumentFiles().write(target.sourceUri, bytes);
+      sourceUri = target.sourceUri;
+      name = target.name;
+    }
+    final saved = await _documents.storeDocx(
+      name,
+      bytes,
+      isExport: true,
+      sourceUri: sourceUri,
     );
-    final temporary = File('${output.path}.tmp');
-    await temporary.writeAsBytes(bytes, flush: true);
-    await temporary.rename(output.path);
-    return EditorSaveResult(name: name, path: output.path);
+    _currentDocument = saved;
+    return EditorSaveResult(name: saved.name, path: saved.filePath!);
   }
 
   Future<void> _initialize() async {
     final bridge =
         widget.bridge ??
         WebViewDocumentEditorBridge(
-          server: EditorAssetServer(persistExport: _persist),
+          server: EditorAssetServer(
+            persistExport: _persist,
+            persistCopy: _persistCopy,
+          ),
         );
     _bridge = bridge;
+    widget.onBridgeCreated?.call(bridge);
     bridge.onPickDocument = () => unawaited(_pick());
     _saved = bridge.server.saved.listen((result) {
       widget.onSaved?.call(result);
-      if (mounted) setState(() => _status = 'Đã lưu: ${result.path}');
+      if (mounted) {
+        setState(() {
+          _name = result.name;
+          _status = _currentDocument.sourceUri != null
+              ? 'Đã lưu vào file gốc: $_name'
+              : 'Đã lưu $_name';
+        });
+      }
     });
     try {
       await bridge.initialize();
@@ -84,23 +160,32 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       await bridge.ready.future.timeout(const Duration(seconds: 45));
       if (!mounted) return;
       final asset = widget.document.assetPath;
-      if (asset != null) {
-        final data = await rootBundle.load(asset);
+      final path = widget.document.filePath;
+      if (asset != null || path != null) {
+        final data = path != null ? null : await rootBundle.load(asset!);
+        final bytes = widget.document.sourceUri != null
+            ? await const AndroidDocumentFiles().read(
+                widget.document.sourceUri!,
+              )
+            : path != null
+            ? await File(path).readAsBytes()
+            : data!.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await bridge.open(
           EditorDocument(
             id: widget.document.id,
             name: widget.document.name,
-            bytes: data.buffer.asUint8List(
-              data.offsetInBytes,
-              data.lengthInBytes,
-            ),
+            bytes: bytes,
           ),
         );
       }
       if (mounted) {
         setState(() {
           _busy = false;
-          _status = 'Sẵn sàng · tài liệu lưu trong ứng dụng';
+          _status = _currentDocument.sourceUri != null
+              ? 'Lưu sẽ cập nhật file gốc'
+              : Platform.isAndroid
+              ? 'Bản cũ trong app · Lưu để chọn file gốc'
+              : 'Sẵn sàng · tài liệu lưu trong ứng dụng';
           widget.onReady?.call();
         });
       }
@@ -139,7 +224,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   }
 
   Future<void> _perform(Future<void> Function() action) async {
-    if (_busy) return;
+    if (_working) return;
     setState(() => _busy = true);
     try {
       await action();
@@ -151,28 +236,22 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   }
 
   Future<void> _pick() => _perform(() async {
-    const group = XTypeGroup(
-      label: 'Word DOCX',
-      extensions: ['docx'],
-      mimeTypes: [
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ],
-      uniformTypeIdentifiers: ['org.openxmlformats.wordprocessingml.document'],
-    );
-    final file = await openFile(acceptedTypeGroups: [group]);
+    final file = await widget.pickDocument();
     if (file == null) return;
     if (await file.length() > EditorAssetServer.maxDocumentBytes) {
       throw StateError('DOCX vượt giới hạn 20 MB');
     }
     if (!await _confirmDiscard()) return;
     final bytes = await file.readAsBytes();
-    await _bridge!.open(
-      EditorDocument(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: file.name,
-        bytes: bytes,
-      ),
+    final document = await _documents.storeDocx(
+      file.name,
+      bytes,
+      sourceUri: file is SourceDocxFile ? file.sourceUri : null,
     );
+    await _bridge!.open(
+      EditorDocument(id: document.id, name: document.name, bytes: bytes),
+    );
+    _currentDocument = document;
     if (mounted) {
       setState(() {
         _name = file.name;
@@ -181,7 +260,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
     }
   });
   Future<void> _leave() async {
-    if (_busy) return;
+    if (_working) return;
     try {
       if (!await _confirmDiscard()) return;
     } catch (error) {
@@ -219,13 +298,13 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
           IconButton(
             key: const Key('open-docx'),
             tooltip: 'Mở DOCX',
-            onPressed: _busy || _error != null ? null : _pick,
+            onPressed: _working || _error != null ? null : _pick,
             icon: const Icon(Icons.folder_open),
           ),
           IconButton(
             key: const Key('save-docx'),
             tooltip: 'Lưu DOCX',
-            onPressed: _busy || _error != null
+            onPressed: _working || _error != null
                 ? null
                 : () => _perform(() async {
                     await _bridge!.save();
@@ -237,7 +316,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       body: SafeArea(
         child: Column(
           children: [
-            if (_busy) const LinearProgressIndicator(),
+            if (_working) const LinearProgressIndicator(),
             Expanded(
               child: _error != null
                   ? Center(
@@ -266,7 +345,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
                   IconButton(
                     key: const Key('undo-docx'),
                     tooltip: 'Hoàn tác',
-                    onPressed: _busy
+                    onPressed: _working
                         ? null
                         : () => _perform(() => _bridge!.undo()),
                     icon: const Icon(Icons.undo),
@@ -274,7 +353,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
                   IconButton(
                     key: const Key('redo-docx'),
                     tooltip: 'Làm lại',
-                    onPressed: _busy
+                    onPressed: _working
                         ? null
                         : () => _perform(() => _bridge!.redo()),
                     icon: const Icon(Icons.redo),

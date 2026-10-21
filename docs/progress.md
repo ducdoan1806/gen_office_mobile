@@ -1,6 +1,6 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 20/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 21/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
@@ -18,26 +18,29 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Sửa menu cuộn ngang, nhãn nằm trên một dòng.
   - [ ] Kiểm tra bàn phím tiếng Việt, chọn chữ, cảm ứng, cuộn và zoom trên điện thoại thật.
 
-- [ ] **Bước 3. Thêm chọn và mở file DOCX thật**
+- [x] **Bước 3. Thêm chọn và mở file DOCX thật**
   - [x] Chọn DOCX bằng file picker native và mở trong editor.
-  - [ ] Sao chép file import vào kho tài liệu lâu dài của app.
-  - [ ] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thư viện hiện vẫn là danh sách mẫu.
+  - [x] Android giữ liên kết và quyền đọc/ghi file gốc; kho riêng giữ cache và metadata.
+  - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút Mở DOCX.
+  - Yêu cầu đã chỉnh lại: Android **Lưu ghi đè chính file nguồn đã mở** bằng SAF; đọc lại từ nguồn khi mở gần đây. Bản cũ trong app cần chọn lại file gốc. **Lưu thành bản mới** chọn nơi lưu qua Android. Xem [kho tài liệu](document-library.md).
 
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
   - [x] Tích hợp sửa nội dung, định dạng chữ, đoạn và bảng từ editor gốc.
   - [x] Có kiểm thử engine/browser cho định dạng và bảng, kiểm thử mobile cho sửa nội dung.
+  - [x] Cải thiện vùng bấm mobile; kiểm thử Android WebView cho định dạng nghiêng/gạch chân, cỡ chữ 18 pt, căn giữa, sửa ô bảng và chèn bảng 2×2; đối chiếu XML DOCX và mở lại kết quả. Xem [chỉnh sửa cơ bản](basic-editing.md).
+  - [x] Kiểm thử bộ 6 DOCX do chủ dự án cung cấp trên Android emulator: lưu nguyên trạng giữ nguyên các phần ZIP; sửa/lưu/mở lại đạt, ảnh/style/header/footer/liên kết và các phần không chỉnh sửa được giữ nguyên. SHA-256 của 6 file nguồn không đổi.
   - [ ] Nghiệm thu đầy đủ trên điện thoại thật với bộ DOCX nhà máy, đối chiếu định dạng Word.
 
 - [ ] **Bước 5. Lưu, xuất và chia sẻ DOCX**
-  - [x] Lưu thành DOCX mới trong Documents riêng của app, dưới `GenOffice/exports`.
+  - [x] Android Lưu cập nhật file nguồn đã chọn; Lưu thành bản mới chọn đích bằng ACTION_CREATE_DOCUMENT.
   - [x] Kiểm thử lưu native và mở lại file kết quả.
   - [x] Cảnh báo thay đổi chưa lưu khi quay lại/mở file khác.
-  - [ ] Thêm chọn nơi xuất và chia sẻ qua share sheet.
+  - [ ] Thêm share sheet; chọn nơi xuất trên iOS/macOS.
   - [ ] Kiểm tra file kết quả bằng Microsoft Word với tài liệu thực tế.
 
 - [ ] **Bước 6. Thêm undo/redo và khôi phục phiên**
   - [x] Nối và kiểm thử undo/redo.
-  - [x] Giữ file gốc bằng cách lưu thành bản mới.
+  - [x] Android giữ URI và quyền truy cập file nguồn qua các lần khởi động; chỉ báo Lưu thành công sau khi ghi/đọc xác minh nguồn.
   - [ ] Thêm snapshot/tự động lưu và khôi phục khi app đóng đột ngột.
   - [ ] Kiểm thử phục hồi sau crash hoặc hệ điều hành thu hồi app.
 
@@ -76,6 +79,6 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Hoàn tất nghiệm thu mobile ở bước 2 và kho tài liệu lâu dài ở bước 3, rồi hoàn thiện các mục thiếu của bước 4–6. Giữ nguyên số bước dù một số phần đã được làm sớm, chẳng hạn iOS.
+Nghiệm thu luồng nhập → đóng/mở lại app → mở từ thư viện trên điện thoại thật ở bước 2/8, rồi hoàn thiện các mục thiếu của bước 4–6. Bước 3 đã có lưu trữ lâu dài và metadata. Giữ nguyên số bước dù một số phần đã được làm sớm, chẳng hạn iOS.
 
 Đây là tổng hợp kết quả kiểm thử đã ghi nhận, không phải lần chạy lại test. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md) và [build iOS](ios-build.md).
