@@ -34,6 +34,6 @@ Các bản xuất từ phiên bản cũ chưa có `document.json` vẫn được
 
 - Unit test: đọc lại metadata bằng repository mới, giữ bản nhập khi xóa nguồn, file trùng tên, bản xuất không ghi đè bản gốc, thư mục ghi dở, giới hạn nhập, tên chứa đường dẫn, di chuyển thư mục app và metadata hỏng.
 - Widget test: thư viện rỗng có nút nhập; tài liệu lưu trên đĩa hiển thị sau khi dựng lại app và repository.
-- Integration test đã mở rộng để nhập DOCX mẫu vào kho, đọc bằng repository mới rồi mở WebView, sửa, lưu và kiểm tra bản gốc không đổi. Chưa chạy lại trên thiết bị trong lần triển khai này vì không có máy kết nối.
+- Integration test đã đạt trên Android emulator `emulator-5554` ngày 21/10/2026: nhập DOCX mẫu vào kho, đọc bằng repository mới rồi mở WebView, sửa, undo/redo, lưu, đọc lại metadata bằng repository mới và mở lại nội dung bản xuất. Kiểm tra bản gốc không đổi. Build 34,5 giây, test 23 giây. Chưa chạy lại luồng mới trên iOS hoặc điện thoại thật; test này không thay thế kiểm tra đóng/mở tiến trình app thực tế.
 
 Nghiệm thu trên điện thoại: nhập DOCX từ ứng dụng Files → chỉnh sửa và lưu → quay lại thư viện → đóng/mở lại app → mở bản nhập và bản lưu → đối chiếu nội dung. Thử thêm hủy chọn file và nhập hai file trùng tên.

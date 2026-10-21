@@ -22,7 +22,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Chọn DOCX bằng file picker native và mở trong editor.
   - [x] Sao chép file import vào kho tài liệu lâu dài của app.
   - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút nhập DOCX.
-  - Bản lưu mới cũng được đưa vào thư viện; không ghi đè file gốc. Đã kiểm thử tự động lưu trữ và dựng lại thư viện; cần nghiệm thu luồng mới trên thiết bị ở bước 2/8. Xem [kho tài liệu](document-library.md).
+  - Bản lưu mới cũng được đưa vào thư viện; không ghi đè file gốc. Đã kiểm thử tự động lưu trữ và dựng lại thư viện; integration test mở/sửa/undo/redo/lưu/mở lại bản lưu và giữ nguyên bản gốc đạt trên Android emulator `emulator-5554` ngày 21/10/2026. Cần nghiệm thu điện thoại thật ở bước 2/8. Xem [kho tài liệu](document-library.md).
 
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
   - [x] Tích hợp sửa nội dung, định dạng chữ, đoạn và bảng từ editor gốc.
