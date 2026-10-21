@@ -43,8 +43,10 @@ class EditorAssetServer {
   }
 
   Uri provideDocument(EditorDocument document) {
-    if (document.bytes.length > maxDocumentBytes) {
-      throw ArgumentError('DOCX vượt giới hạn 20 MB');
+    // Native imports remain limited to 20 MB. A saved document can grow to
+    // the export limit and must still be reopenable from the library.
+    if (document.bytes.length > maxExportBytes) {
+      throw ArgumentError('DOCX vượt giới hạn 32 MB');
     }
     if (!document.name.toLowerCase().endsWith('.docx')) {
       throw ArgumentError('Chỉ hỗ trợ DOCX');

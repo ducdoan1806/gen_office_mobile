@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,7 +10,7 @@ import 'package:gen_office_mobile/features/editor/data/editor_asset_server.dart'
 import 'package:gen_office_mobile/features/editor/data/webview_document_editor_bridge.dart';
 import 'package:gen_office_mobile/features/editor/domain/editor_document.dart';
 import 'package:gen_office_mobile/features/editor/presentation/mobile_docx_editor_page.dart';
-import 'package:gen_office_mobile/features/documents/domain/office_document.dart';
+import 'package:gen_office_mobile/features/documents/data/local_document_repository.dart';
 
 Future<void> pumpUntil(WidgetTester tester, bool Function() predicate) async {
   for (var attempt = 0; attempt < 450; attempt++) {
@@ -28,25 +29,36 @@ void main() {
     tester,
   ) async {
     final loaded = Completer<void>();
+    final directory = await getTemporaryDirectory();
+    final libraryDirectory = await directory.createTemp(
+      'genoffice-library-test-',
+    );
+    addTearDown(() => libraryDirectory.delete(recursive: true));
+    LocalDocumentRepository repository() => LocalDocumentRepository(
+      documentsDirectory: () async => libraryDirectory,
+    );
+    final originalBytes = (await rootBundle.load(
+      'assets/samples/factory-demo.docx',
+    )).buffer.asUint8List();
+    await repository().storeDocx('factory-demo.docx', originalBytes);
+    final imported = (await repository().list()).single;
     final bridge = WebViewDocumentEditorBridge(
       server: EditorAssetServer(
         persistExport: (name, bytes) async {
-          final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/mobile-roundtrip.docx');
-          await file.writeAsBytes(bytes, flush: true);
-          return EditorSaveResult(name: name, path: file.path);
+          final saved = await repository().storeDocx(
+            name,
+            bytes,
+            isExport: true,
+          );
+          return EditorSaveResult(name: saved.name, path: saved.filePath!);
         },
       ),
     );
     await tester.pumpWidget(
       MaterialApp(
         home: MobileDocxEditorPage(
-          document: const OfficeDocument(
-            id: 'demo-doc',
-            name: 'factory-demo.docx',
-            format: DocumentFormat.docx,
-            assetPath: 'assets/samples/factory-demo.docx',
-          ),
+          document: imported,
+          documents: repository(),
           bridge: bridge,
           onReady: () {
             if (!loaded.isCompleted) loaded.complete();
@@ -75,6 +87,13 @@ void main() {
       await bridge.redo();
       expect(await bridge.hasUnsavedChanges(), true);
       final result = await bridge.save();
+      final restored = await repository().list();
+      expect(restored, hasLength(2));
+      expect(
+        restored.any((document) => document.filePath == result.path),
+        true,
+      );
+      expect(await File(imported.filePath!).readAsBytes(), originalBytes);
       expect(await File(result.path).exists(), true);
       final bytes = await File(result.path).readAsBytes();
       expect(bytes.length, greaterThan(100));

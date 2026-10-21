@@ -6,9 +6,15 @@ class OfficeDocument {
     required this.name,
     required this.format,
     this.assetPath,
+    this.filePath,
+    this.createdAt,
+    this.sizeBytes,
   });
   final String id;
   final String name;
   final DocumentFormat format;
   final String? assetPath;
+  final String? filePath;
+  final DateTime? createdAt;
+  final int? sizeBytes;
 }

@@ -1,8 +1,16 @@
+import 'dart:typed_data';
 import '../domain/document_repository.dart';
 import '../domain/office_document.dart';
 
-/// Demo metadata only. Replace with file picker and persistent local storage.
+/// Demo fixtures for tests; the app uses LocalDocumentRepository.
 class MemoryDocumentRepository implements DocumentRepository {
+  @override
+  Future<OfficeDocument> storeDocx(
+    String name,
+    Uint8List bytes, {
+    bool isExport = false,
+  }) async =>
+      throw UnsupportedError('Demo repository does not persist documents.');
   @override
   Future<List<OfficeDocument>> list() async => const [
     OfficeDocument(

@@ -1,6 +1,6 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 20/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 21/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
@@ -18,10 +18,11 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Sửa menu cuộn ngang, nhãn nằm trên một dòng.
   - [ ] Kiểm tra bàn phím tiếng Việt, chọn chữ, cảm ứng, cuộn và zoom trên điện thoại thật.
 
-- [ ] **Bước 3. Thêm chọn và mở file DOCX thật**
+- [x] **Bước 3. Thêm chọn và mở file DOCX thật**
   - [x] Chọn DOCX bằng file picker native và mở trong editor.
-  - [ ] Sao chép file import vào kho tài liệu lâu dài của app.
-  - [ ] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thư viện hiện vẫn là danh sách mẫu.
+  - [x] Sao chép file import vào kho tài liệu lâu dài của app.
+  - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút nhập DOCX.
+  - Bản lưu mới cũng được đưa vào thư viện; không ghi đè file gốc. Đã kiểm thử tự động lưu trữ và dựng lại thư viện; cần nghiệm thu luồng mới trên thiết bị ở bước 2/8. Xem [kho tài liệu](document-library.md).
 
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
   - [x] Tích hợp sửa nội dung, định dạng chữ, đoạn và bảng từ editor gốc.
@@ -76,6 +77,6 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Hoàn tất nghiệm thu mobile ở bước 2 và kho tài liệu lâu dài ở bước 3, rồi hoàn thiện các mục thiếu của bước 4–6. Giữ nguyên số bước dù một số phần đã được làm sớm, chẳng hạn iOS.
+Nghiệm thu luồng nhập → đóng/mở lại app → mở từ thư viện trên điện thoại thật ở bước 2/8, rồi hoàn thiện các mục thiếu của bước 4–6. Bước 3 đã có lưu trữ lâu dài và metadata. Giữ nguyên số bước dù một số phần đã được làm sớm, chẳng hạn iOS.
 
 Đây là tổng hợp kết quả kiểm thử đã ghi nhận, không phải lần chạy lại test. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md) và [build iOS](ios-build.md).

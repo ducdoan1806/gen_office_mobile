@@ -25,11 +25,11 @@ iOS: NSAllowsLocalNetworking permits local resources. macOS additionally has cli
 
 ## Current behavior and limits
 
-- DOCX demo opens real bundled bytes; the folder button uses native file_selector.
-- Native save creates a new app-private export. No original file overwrite, user-selected destination, share sheet or persistent library UI yet.
+- The app opens its persistent document library; both the library import button and editor folder button use native file_selector. Imported DOCX bytes are copied into app-private Documents before opening. Bundled samples remain available to tests.
+- Native save creates a new app-private export with library metadata. Imported and newly exported documents are listed after restart. No original file overwrite, user-selected destination or share sheet yet. See [document library](document-library.md).
 - Flutter back/open checks the renderer's composite dirty state and asks before discarding.
 - Original toolbar download actions use native saving in mobile mode. Desktop print/image-picker integrations remain unavailable in mobile mode.
-- Recovery/autosave is not promised. 20 MB import / 32 MB export limits apply; expanded OOXML memory also depends on upstream parsing.
+- Recovery/autosave is not promised. 20 MB import / 32 MB export limits apply; saved files up to 32 MB can reopen from the library. Expanded OOXML memory also depends on upstream parsing.
 - Flutter's AI files are unchanged and editor AI remains disabled.
 - Original desktop controls need real-device touch and Vietnamese IME QA. The iPhone Simulator running iOS 27 has passed the DOCX roundtrip integration test; physical iOS devices and macOS still need validation.
 

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../../documents/domain/office_document.dart';
+import '../../documents/domain/document_repository.dart';
+import '../../documents/data/local_document_repository.dart';
+import '../../documents/data/docx_file_picker.dart';
 import '../data/editor_asset_server.dart';
 import '../data/webview_document_editor_bridge.dart';
 import '../domain/editor_document.dart';
@@ -18,8 +19,10 @@ class MobileDocxEditorPage extends StatefulWidget {
     this.bridge,
     this.onSaved,
     this.onReady,
+    this.documents,
   });
   final OfficeDocument document;
+  final DocumentRepository? documents;
 
   /// Injection point for device integration tests; normal UI owns its bridge.
   final WebViewDocumentEditorBridge? bridge;
@@ -36,6 +39,8 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   String? _error;
   String _status = 'Đang khởi động editor…';
   late String _name = widget.document.name;
+  late final DocumentRepository _documents =
+      widget.documents ?? LocalDocumentRepository();
   bool get _supported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -53,16 +58,8 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   }
 
   Future<EditorSaveResult> _persist(String name, Uint8List bytes) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final exports = Directory('${directory.path}/GenOffice/exports');
-    await exports.create(recursive: true);
-    final output = File(
-      '${exports.path}/${DateTime.now().microsecondsSinceEpoch}-$name',
-    );
-    final temporary = File('${output.path}.tmp');
-    await temporary.writeAsBytes(bytes, flush: true);
-    await temporary.rename(output.path);
-    return EditorSaveResult(name: name, path: output.path);
+    final saved = await _documents.storeDocx(name, bytes, isExport: true);
+    return EditorSaveResult(name: saved.name, path: saved.filePath!);
   }
 
   Future<void> _initialize() async {
@@ -84,16 +81,17 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       await bridge.ready.future.timeout(const Duration(seconds: 45));
       if (!mounted) return;
       final asset = widget.document.assetPath;
-      if (asset != null) {
-        final data = await rootBundle.load(asset);
+      final path = widget.document.filePath;
+      if (asset != null || path != null) {
+        final data = path != null ? null : await rootBundle.load(asset!);
+        final bytes = path != null
+            ? await File(path).readAsBytes()
+            : data!.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await bridge.open(
           EditorDocument(
             id: widget.document.id,
             name: widget.document.name,
-            bytes: data.buffer.asUint8List(
-              data.offsetInBytes,
-              data.lengthInBytes,
-            ),
+            bytes: bytes,
           ),
         );
       }
@@ -151,27 +149,16 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   }
 
   Future<void> _pick() => _perform(() async {
-    const group = XTypeGroup(
-      label: 'Word DOCX',
-      extensions: ['docx'],
-      mimeTypes: [
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ],
-      uniformTypeIdentifiers: ['org.openxmlformats.wordprocessingml.document'],
-    );
-    final file = await openFile(acceptedTypeGroups: [group]);
+    final file = await pickDocxFile();
     if (file == null) return;
     if (await file.length() > EditorAssetServer.maxDocumentBytes) {
       throw StateError('DOCX vượt giới hạn 20 MB');
     }
     if (!await _confirmDiscard()) return;
     final bytes = await file.readAsBytes();
+    final document = await _documents.storeDocx(file.name, bytes);
     await _bridge!.open(
-      EditorDocument(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: file.name,
-        bytes: bytes,
-      ),
+      EditorDocument(id: document.id, name: document.name, bytes: bytes),
     );
     if (mounted) {
       setState(() {
