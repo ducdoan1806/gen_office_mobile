@@ -11,6 +11,7 @@ import '../../documents/data/local_document_repository.dart';
 import '../../documents/data/docx_file_picker.dart';
 import '../../documents/data/android_document_files.dart';
 import '../data/editor_asset_server.dart';
+import '../data/document_recovery_store.dart';
 import '../data/webview_document_editor_bridge.dart';
 import '../domain/editor_document.dart';
 
@@ -19,6 +20,9 @@ class MobileDocxEditorPage extends StatefulWidget {
     super.key,
     required this.document,
     this.bridge,
+    this.recoveryStore,
+    this.initialRecovery,
+    this.checkpointInterval = const Duration(seconds: 5),
     this.onSaved,
     this.onReady,
     this.documents,
@@ -26,6 +30,9 @@ class MobileDocxEditorPage extends StatefulWidget {
     this.pickDocument = pickDocxFile,
   });
   final OfficeDocument document;
+  final DocumentRecoveryStore? recoveryStore;
+  final RecoverySnapshot? initialRecovery;
+  final Duration checkpointInterval;
   final DocumentRepository? documents;
   final ValueChanged<WebViewDocumentEditorBridge>? onBridgeCreated;
   final Future<XFile?> Function() pickDocument;
@@ -38,12 +45,19 @@ class MobileDocxEditorPage extends StatefulWidget {
   State<MobileDocxEditorPage> createState() => _MobileDocxEditorPageState();
 }
 
-class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
+class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
+    with WidgetsBindingObserver {
   WebViewDocumentEditorBridge? _bridge;
   StreamSubscription<EditorSaveResult>? _saved;
   bool _viewCreated = false, _busy = true, _allowPop = false;
-  bool _saving = false;
-  bool get _working => _busy || _saving;
+  bool _saving = false, _checkpointing = false;
+  Timer? _checkpointTimer;
+  Future<bool>? _checkpointFuture;
+  OfficeDocument? _recoveryTarget;
+  String? _baseHash;
+  bool _sourceConflict = false;
+  late final _recovery = widget.recoveryStore ?? DocumentRecoveryStore();
+  bool get _working => _busy || _saving || _checkpointing;
   String? _error;
   String _status = 'Đang khởi động editor…';
   late String _name = widget.document.name;
@@ -58,6 +72,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_supported) {
       unawaited(_initialize());
     } else {
@@ -72,6 +87,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
     if (_saving) throw StateError('Đang lưu tài liệu. Vui lòng chờ.');
     if (mounted) setState(() => _saving = true);
     try {
+      await _checkpointFuture;
       return await action();
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -85,6 +101,11 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       _saveLocked(() => _persistNewCopy(name, bytes));
 
   Future<EditorSaveResult> _persistCurrent(String name, Uint8List bytes) async {
+    final previousId = _currentDocument.id;
+    if (_sourceConflict && !await _confirmSourceOverwrite()) {
+      throw StateError('Chưa lưu. Bản tạm khôi phục vẫn được giữ lại.');
+    }
+    if (_currentDocument.filePath == null) return _persistNewCopy(name, bytes);
     String? sourceUri = _currentDocument.sourceUri;
     if (Platform.isAndroid && sourceUri == null) {
       if (mounted) setState(() => _status = 'Chọn file gốc để lưu thay đổi');
@@ -92,26 +113,20 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       if (target == null) throw StateError('Chưa lưu: bạn chưa chọn file gốc.');
       sourceUri = target.sourceUri;
     }
-    if (_currentDocument.filePath == null && sourceUri != null) {
-      await const AndroidDocumentFiles().write(sourceUri, bytes);
-    }
-    final saved = _currentDocument.filePath == null
-        ? await _documents.storeDocx(
-            name,
-            bytes,
-            isExport: true,
-            sourceUri: sourceUri,
-          )
-        : await _documents.updateDocx(
-            _currentDocument.id,
-            bytes,
-            sourceUri: sourceUri,
-          );
+    final saved = await _documents.updateDocx(
+      previousId,
+      bytes,
+      sourceUri: sourceUri,
+    );
+    await _clearRecoveryAfterSave(previousId);
+    _baseHash = DocumentRecoveryStore.hash(bytes);
+    _sourceConflict = false;
     _currentDocument = saved;
     return EditorSaveResult(name: saved.name, path: saved.filePath!);
   }
 
   Future<EditorSaveResult> _persistNewCopy(String name, Uint8List bytes) async {
+    final previousId = _currentDocument.id;
     String? sourceUri;
     if (Platform.isAndroid) {
       final target = await const AndroidDocumentFiles().pick(createName: name);
@@ -126,6 +141,9 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       isExport: true,
       sourceUri: sourceUri,
     );
+    await _clearRecoveryAfterSave(previousId);
+    _baseHash = DocumentRecoveryStore.hash(bytes);
+    _sourceConflict = false;
     _currentDocument = saved;
     return EditorSaveResult(name: saved.name, path: saved.filePath!);
   }
@@ -137,6 +155,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
           server: EditorAssetServer(
             persistExport: _persist,
             persistCopy: _persistCopy,
+            persistRecovery: _persistRecovery,
           ),
         );
     _bridge = bridge;
@@ -159,35 +178,25 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       setState(() => _viewCreated = true);
       await bridge.ready.future.timeout(const Duration(seconds: 45));
       if (!mounted) return;
-      final asset = widget.document.assetPath;
-      final path = widget.document.filePath;
-      if (asset != null || path != null) {
-        final data = path != null ? null : await rootBundle.load(asset!);
-        final bytes = widget.document.sourceUri != null
-            ? await const AndroidDocumentFiles().read(
-                widget.document.sourceUri!,
-              )
-            : path != null
-            ? await File(path).readAsBytes()
-            : data!.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-        await bridge.open(
-          EditorDocument(
-            id: widget.document.id,
-            name: widget.document.name,
-            bytes: bytes,
-          ),
-        );
+      if (!await _loadDocument(
+        widget.document,
+        recovery: widget.initialRecovery,
+      )) {
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _error = 'Đã hủy mở tài liệu.';
+          });
+        }
+        return;
       }
+      _checkpointTimer = Timer.periodic(
+        widget.checkpointInterval,
+        (_) => unawaited(_checkpoint()),
+      );
       if (mounted) {
-        setState(() {
-          _busy = false;
-          _status = _currentDocument.sourceUri != null
-              ? 'Lưu sẽ cập nhật file gốc'
-              : Platform.isAndroid
-              ? 'Bản cũ trong app · Lưu để chọn file gốc'
-              : 'Sẵn sàng · tài liệu lưu trong ứng dụng';
-          widget.onReady?.call();
-        });
+        setState(() => _busy = false);
+        widget.onReady?.call();
       }
     } catch (error) {
       if (mounted) {
@@ -196,6 +205,200 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
           _error = 'Không khởi động được editor: $error';
         });
       }
+    }
+  }
+
+  Future<Uint8List> _readSource(OfficeDocument document) async {
+    if (document.sourceUri != null) {
+      return const AndroidDocumentFiles().read(document.sourceUri!);
+    }
+    if (document.filePath != null) {
+      return File(document.filePath!).readAsBytes();
+    }
+    final data = await rootBundle.load(document.assetPath!);
+    return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+  }
+
+  Future<bool> _loadDocument(
+    OfficeDocument document, {
+    RecoverySnapshot? recovery,
+    Uint8List? sourceBytes,
+    bool ignoreRecovery = false,
+  }) async {
+    var pending = recovery;
+    if (pending == null && !ignoreRecovery) {
+      try {
+        pending = await _recovery.find(document.id);
+      } catch (_) {
+        if (!mounted) return false;
+        final openSource = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Không đọc được bản tạm'),
+            content: const Text(
+              'Bản tạm không đọc được. Bạn có thể bỏ bản tạm này để mở file gốc, hoặc chọn Để sau để giữ dữ liệu lại kiểm tra. File gốc vẫn được giữ nguyên.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Để sau'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Bỏ bản tạm, mở gốc'),
+              ),
+            ],
+          ),
+        );
+        if (openSource != true) return false;
+        await _recovery.clear(document.id);
+      }
+    }
+    if (!mounted) return false;
+    if (pending != null && recovery == null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Có bản tạm chưa lưu'),
+          content: Text(
+            '${document.name} có thay đổi chưa lưu. Bạn muốn khôi phục để tiếp tục sửa?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Để sau'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'discard'),
+              child: const Text('Bỏ bản tạm, mở gốc'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, 'restore'),
+              child: const Text('Khôi phục'),
+            ),
+          ],
+        ),
+      );
+      if (choice == null) return false;
+      if (choice == 'discard') {
+        await _recovery.clear(document.id);
+        pending = null;
+      }
+    }
+    Uint8List? original;
+    try {
+      original = sourceBytes ?? await _readSource(document);
+    } catch (_) {
+      if (pending == null) rethrow;
+    }
+    final bytes = pending == null ? original! : await pending.read();
+    final sourceHash = original == null
+        ? null
+        : DocumentRecoveryStore.hash(original);
+    await _bridge!.open(
+      EditorDocument(id: document.id, name: document.name, bytes: bytes),
+      recovered: pending != null,
+    );
+    _currentDocument = document;
+    _name = document.name;
+    _baseHash = pending != null ? pending.baseHash : sourceHash;
+    _sourceConflict =
+        pending != null &&
+        (sourceHash == null || pending.baseHash != sourceHash);
+    _status = pending != null
+        ? 'Đã khôi phục bản tạm · bấm Lưu để cập nhật file gốc'
+        : document.sourceUri != null
+        ? 'Lưu sẽ cập nhật file gốc'
+        : Platform.isAndroid
+        ? 'Bản trong app · Lưu để chọn file gốc'
+        : 'Sẵn sàng · tài liệu lưu trong ứng dụng';
+    return true;
+  }
+
+  Future<bool> _confirmSourceOverwrite() async {
+    if (!mounted) return false;
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('File gốc đã thay đổi'),
+            content: const Text(
+              'File gốc khác với lúc tạo bản tạm, hoặc chưa đọc được nguồn. Lưu sẽ ghi đè bằng nội dung đang khôi phục. Bạn có thể dùng Lưu thành bản mới để giữ cả hai.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Hủy'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Ghi đè file gốc'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _clearRecoveryAfterSave(String id) async {
+    try {
+      await _recovery.clear(id);
+    } catch (_) {
+      /* The source is already saved; retain the draft if cleanup fails. */
+    }
+  }
+
+  Future<void> _persistRecovery(String id, Uint8List bytes) async {
+    final target = _recoveryTarget;
+    if (target == null || target.id != id || target.id != _currentDocument.id) {
+      throw StateError(
+        'Tài liệu đã thay đổi. Không ghi bản tạm vào tài liệu khác.',
+      );
+    }
+    await _recovery.write(target, bytes, baseHash: _baseHash);
+  }
+
+  Future<bool> _checkpoint() {
+    if (!mounted ||
+        _working ||
+        _error != null ||
+        _bridge == null ||
+        !_bridge!.ready.isCompleted) {
+      return Future.value(false);
+    }
+    return _checkpointFuture = _runCheckpoint();
+  }
+
+  Future<bool> _runCheckpoint() async {
+    setState(() => _checkpointing = true);
+    _recoveryTarget = _currentDocument;
+    try {
+      final captured = await _bridge!.checkpoint(_currentDocument.id);
+      if (captured && mounted) {
+        setState(
+          () => _status = 'Đã lưu bản tạm · file gốc chưa được cập nhật',
+        );
+      }
+      return captured;
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _status = 'Chưa lưu được bản tạm. Hãy bấm Lưu để giữ thay đổi.',
+        );
+      }
+      return false;
+    } finally {
+      _recoveryTarget = null;
+      _checkpointFuture = null;
+      if (mounted) setState(() => _checkpointing = false);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      unawaited(_checkpoint());
     }
   }
 
@@ -248,28 +451,33 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
       bytes,
       sourceUri: file is SourceDocxFile ? file.sourceUri : null,
     );
-    await _bridge!.open(
-      EditorDocument(id: document.id, name: document.name, bytes: bytes),
-    );
-    _currentDocument = document;
-    if (mounted) {
-      setState(() {
-        _name = file.name;
-        _status = 'Đã mở ${file.name}';
-      });
+    final previousId = _currentDocument.id;
+    if (!await _loadDocument(
+      document,
+      sourceBytes: bytes,
+      ignoreRecovery: document.id == previousId,
+    )) {
+      return;
     }
+    await _recovery.clear(previousId);
+    if (mounted) setState(() {});
   });
   Future<void> _leave() async {
     if (_working) return;
+    setState(() => _busy = true);
     try {
       if (!await _confirmDiscard()) return;
+      await _recovery.clear(_currentDocument.id);
     } catch (error) {
       if (mounted) {
         setState(() => _status = 'Không kiểm tra được thay đổi: $error');
       }
       return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
     if (mounted) {
+      _checkpointTimer?.cancel();
       setState(() => _allowPop = true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) Navigator.of(context).pop();
@@ -279,6 +487,8 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _checkpointTimer?.cancel();
     unawaited(_saved?.cancel());
     unawaited(_bridge?.close());
     super.dispose();

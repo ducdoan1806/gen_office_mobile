@@ -6,6 +6,9 @@ import '../../editor/presentation/mobile_docx_editor_page.dart';
 import '../domain/office_document.dart';
 import '../data/docx_file_picker.dart';
 import '../data/android_document_files.dart';
+import '../../editor/data/document_recovery_store.dart';
+import '../../editor/presentation/recovery_documents.dart';
+import '../../editor/data/webview_document_editor_bridge.dart';
 import '../data/local_document_repository.dart';
 
 class DocumentLibraryPage extends StatefulWidget {
@@ -13,8 +16,12 @@ class DocumentLibraryPage extends StatefulWidget {
     super.key,
     required this.dependencies,
     this.pickDocument = pickDocxFile,
+    this.recoveryStore,
+    this.onBridgeCreated,
   });
   final AppDependencies dependencies;
+  final DocumentRecoveryStore? recoveryStore;
+  final ValueChanged<WebViewDocumentEditorBridge>? onBridgeCreated;
   final Future<XFile?> Function() pickDocument;
   @override
   State<DocumentLibraryPage> createState() => _DocumentLibraryPageState();
@@ -22,6 +29,8 @@ class DocumentLibraryPage extends StatefulWidget {
 
 class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   bool _importing = false;
+  int _reloadRevision = 0;
+  late final _recovery = widget.recoveryStore ?? DocumentRecoveryStore();
   late Future<List<OfficeDocument>> _documents = widget.dependencies.documents
       .list();
 
@@ -29,15 +38,22 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     final documents = widget.dependencies.documents.list();
     setState(() {
       _documents = documents;
+      _reloadRevision++;
     });
   }
 
-  Future<void> _open(OfficeDocument document) async {
+  Future<void> _open(
+    OfficeDocument document, {
+    RecoverySnapshot? recovery,
+  }) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => document.format == DocumentFormat.docx
             ? MobileDocxEditorPage(
                 document: document,
+                recoveryStore: _recovery,
+                initialRecovery: recovery,
+                onBridgeCreated: widget.onBridgeCreated,
                 documents: widget.dependencies.documents,
               )
             : DocumentEditorPage(
@@ -104,6 +120,20 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     body: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        RecoveryDocuments(
+          key: ValueKey(_reloadRevision),
+          store: _recovery,
+          onRestore: (snapshot) async {
+            final documents = await widget.dependencies.documents.list();
+            final current = documents.where(
+              (d) => d.id == snapshot.document.id,
+            );
+            await _open(
+              current.isEmpty ? snapshot.document : current.first,
+              recovery: snapshot,
+            );
+          },
+        ),
         const Padding(
           padding: EdgeInsets.all(16),
           child: Text('Tài liệu gần đây'),

@@ -8,6 +8,8 @@ import '../domain/editor_document.dart';
 
 typedef PersistEditorExport =
     Future<EditorSaveResult> Function(String name, Uint8List bytes);
+typedef PersistEditorRecovery =
+    Future<void> Function(String documentId, Uint8List bytes);
 
 /// Serves only bundled assets and one document, on loopback and a random path.
 /// No arbitrary filesystem paths, remote fetching or JS evaluation endpoint.
@@ -15,18 +17,21 @@ class EditorAssetServer {
   EditorAssetServer({
     required this.persistExport,
     this.persistCopy,
+    this.persistRecovery,
     AssetBundle? bundle,
   }) : _bundle = bundle ?? rootBundle;
   static const maxDocumentBytes = 20 * 1024 * 1024;
   static const maxExportBytes = 32 * 1024 * 1024;
   final PersistEditorExport persistExport;
   final PersistEditorExport? persistCopy;
+  final PersistEditorRecovery? persistRecovery;
   final AssetBundle _bundle;
   HttpServer? _server;
   late Uri _base;
   EditorDocument? _document;
   String? _documentKey;
   bool _saving = false;
+  bool _checkpointing = false;
   EditorSaveResult? lastSave;
   int saveRevision = 0;
   final _saved = StreamController<EditorSaveResult>.broadcast();
@@ -84,12 +89,18 @@ class EditorAssetServer {
         return;
       }
       final path = request.uri.path.substring(_base.path.length);
-      if (path == 'exports' && request.method == 'POST') {
+      if ((path == 'exports' || path == 'recovery') &&
+          request.method == 'POST') {
+        final recovery = path == 'recovery';
+        if (recovery && persistRecovery == null) {
+          response.statusCode = HttpStatus.notFound;
+          return;
+        }
         if (request.headers.value('origin') != _base.origin) {
           response.statusCode = HttpStatus.forbidden;
           return;
         }
-        if (_saving) {
+        if (recovery ? _checkpointing : _saving) {
           response.statusCode = HttpStatus.conflict;
           return;
         }
@@ -97,7 +108,11 @@ class EditorAssetServer {
           response.statusCode = HttpStatus.requestEntityTooLarge;
           return;
         }
-        _saving = true;
+        if (recovery) {
+          _checkpointing = true;
+        } else {
+          _saving = true;
+        }
         try {
           final builder = BytesBuilder(copy: false);
           await for (final chunk in request) {
@@ -110,6 +125,16 @@ class EditorAssetServer {
           final bytes = builder.takeBytes();
           if (bytes.length < 4 || bytes[0] != 0x50 || bytes[1] != 0x4b) {
             throw const FormatException('Invalid DOCX export');
+          }
+          if (recovery) {
+            final id = request.uri.queryParameters['documentId'];
+            if (id == null || id.isEmpty) {
+              throw const FormatException('Missing document ID');
+            }
+            await persistRecovery!(id, bytes);
+            response.headers.contentType = ContentType.json;
+            response.write(jsonEncode({'ok': true}));
+            return;
           }
           final raw = request.uri.queryParameters['name'] ?? 'document.docx';
           final name = raw
@@ -130,7 +155,11 @@ class EditorAssetServer {
             jsonEncode({'ok': true, 'name': result.name, 'path': result.path}),
           );
         } finally {
-          _saving = false;
+          if (recovery) {
+            _checkpointing = false;
+          } else {
+            _saving = false;
+          }
         }
         return;
       }

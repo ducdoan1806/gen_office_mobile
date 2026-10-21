@@ -10,6 +10,7 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
  document.documentElement.dataset.host = 'mobile';
  const base = new URL('./', location.href);
  let currentName = 'document.docx';
+ let recoveryDocumentId: string | null = null;
  window.addEventListener('error',event=>send({type:'error',error:event.message}));
  window.addEventListener('unhandledrejection',event=>send({type:'error',error:String(event.reason)}));
  const localUrl = (value: unknown) => {
@@ -26,19 +27,22 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
  });
  window.addEventListener('genoffice:ready',()=>send({type:'ready',protocol:1}));
  const invokeRenderer = (command: Command) => new Promise<unknown>((resolve,reject)=>{
-   const timer=setTimeout(()=>{pending.delete(command.id);reject(new Error('Renderer command timed out'));},45000);
+   const timer=setTimeout(()=>{pending.delete(command.id);reject(new Error('Renderer command timed out'));},command.method==='save'?600000:45000);
    pending.set(command.id,{resolve,reject,timer});
    window.dispatchEvent(new CustomEvent('genoffice:command',{detail:command}));
  });
  win.genOfficeMobile = {async receive(command) {
    try {
      if (!command || typeof command.id !== 'string') throw new Error('Invalid command');
-     if (!['open','save','undo','redo','status','new'].includes(command.method)) throw new Error('Unsupported command');
+     if (!['open','save','undo','redo','status','new','snapshot'].includes(command.method)) throw new Error('Unsupported command');
      if(command.method==='open') {
        const args=command.args!;
-       command={...command,args:{file:{path:`mobile://${String(args.documentId)}`,name:String(args.name),dataUrl:localUrl(args.url),hash:''}}};
+       command={...command,args:{file:{path:`mobile://${String(args.documentId)}`,name:String(args.name),dataUrl:localUrl(args.url),hash:'',recovered:args.recovered===true}}};
      }
-     const value=await invokeRenderer(command);
+     if(command.method==='snapshot') recoveryDocumentId=String(command.args?.documentId ?? '');
+     let value: unknown;
+     try { value=await invokeRenderer(command); }
+     finally { if(command.method==='snapshot') recoveryDocumentId=null; }
      if(command.method==='open') currentName=String((command.args!.file as {name:string}).name);
      send({type:'reply',id:command.id,ok:true,value});
    } catch(error) { send({type:'reply',id:command.id,ok:false,error:String(error)}); }
@@ -55,6 +59,14 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
      send({type:'saved',name:result.name,path:result.path});
      return {ok:true,path:`mobile://saved/${encodeURIComponent(result.name)}`};
    }catch(error){return {ok:false,error:String(error)};}
+ };
+ host.api.writeRecoveryCopy=async (_path:string,data:ArrayBuffer)=>{
+   if(!recoveryDocumentId)return {ok:false};
+   const url=new URL('recovery',base);url.searchParams.set('documentId',recoveryDocumentId);
+   const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},body:data});
+   const result=await response.json();
+   if(!response.ok || !result.ok)throw new Error(result.error || 'Recovery write failed');
+   return {ok:true};
  };
  host.api.saveDocx=(path:string,data:ArrayBuffer,auto:boolean)=>save(currentName,data,auto);
  host.api.saveDocxAs=(name:string,data:ArrayBuffer)=>save(name,data,false,true);

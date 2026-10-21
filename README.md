@@ -71,6 +71,8 @@ Nếu chỉ kết nối một thiết bị phù hợp, có thể dùng `flutter 
 
 Android giữ quyền đọc/ghi của file đã chọn qua Storage Access Framework. Danh sách gần đây lưu liên kết đến file gốc; khi mở lại, app đọc nội dung từ file đó. Các bản sao được nhập bằng phiên bản cũ cần mở lại file gốc bằng **Mở DOCX**, hoặc chọn lại file gốc ở lần Lưu đầu tiên. **Lưu thành bản mới** mở trình chọn nơi lưu của Android. iOS/macOS vẫn dùng cơ chế bản sao riêng; share sheet chưa triển khai.
 
+App tạo bản tạm cho DOCX đang sửa khoảng mỗi 5 giây. Nếu app bị đóng đột ngột, mở lại sẽ có mục **Khôi phục** để tiếp tục từ bản tạm gần nhất; bấm **Lưu** để cập nhật file gốc. Xem [khôi phục phiên](docs/session-recovery.md) về giới hạn và kiểm thử.
+
 ## 4. Build APK và cài lên điện thoại
 
 Tạo APK debug phục vụ phát triển/thử nghiệm:

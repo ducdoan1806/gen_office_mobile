@@ -107,14 +107,18 @@ class WebViewDocumentEditorBridge implements DocumentEditorBridge {
   }
 
   @override
-  Future<void> open(EditorDocument document) async {
+  Future<void> open(EditorDocument document, {bool recovered = false}) async {
     final url = server.provideDocument(document);
     await _command('open', {
       'documentId': document.id,
       'name': document.name,
       'url': url.toString(),
+      'recovered': recovered,
     });
   }
+
+  Future<bool> checkpoint(String documentId) async =>
+      await _command('snapshot', {'documentId': documentId}) == true;
 
   @override
   Future<EditorSaveResult> save() async {

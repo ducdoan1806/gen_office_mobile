@@ -13,7 +13,7 @@
 
 JS to Flutter `GenOfficeHost`: ready {protocol:1}, reply {id,ok,value/error}, saved {name,path}, pickDocument, confirmRequired and error.
 
-Flutter to JS: {id,method,args}; methods are open, save, undo, redo, status and new. Only serialized JSON data is passed to the fixed receive function. No generic filesystem, URL fetch or script execution command is exposed.
+Flutter to JS: {id,method,args}; methods are open, save, undo, redo, status, new and snapshot. Only serialized JSON data is passed to the fixed receive function. No generic filesystem, URL fetch or script execution command is exposed.
 
 The App integration hook reuses loadFile/save/undo/redo and is active only while the real editor is ready. The old window.desktop name remains a compatibility interface, with browser/mobile implementations instead of Electron IPC.
 
@@ -29,7 +29,7 @@ iOS: NSAllowsLocalNetworking permits local resources. macOS additionally has cli
 - Android Save updates the actual source file; errors keep the renderer dirty and never silently fall back to cache. Legacy entries require selecting their original file once. Save As uses ACTION_CREATE_DOCUMENT and subsequent Save follows that new URI. Source URIs stay in the native host, outside the renderer. No broad storage permission is requested. See [document library](document-library.md).
 - Flutter back/open checks the renderer's composite dirty state and asks before discarding.
 - Original toolbar download actions use native saving in mobile mode. Desktop print/image-picker integrations remain unavailable in mobile mode.
-- Recovery/autosave is not promised. 20 MB import / 32 MB export limits apply; saved files up to 32 MB can reopen from the library. Expanded OOXML memory also depends on upstream parsing.
+- Flutter checkpoints dirty opened DOCX documents every 5 seconds and best-effort on backgrounding. A separate same-origin recovery endpoint stores private snapshots without writing the source or clearing dirty. Startup offers Restore/Discard; restored documents remain dirty until manual Save. See [session recovery](session-recovery.md). 20 MB import / 32 MB export limits apply; saved files up to 32 MB can reopen from the library. Expanded OOXML memory also depends on upstream parsing.
 - Flutter's AI files are unchanged and editor AI remains disabled.
 - Original desktop controls need real-device touch and Vietnamese IME QA. The iPhone Simulator running iOS 27 has passed the DOCX roundtrip integration test; physical iOS devices and macOS still need validation.
 - Mobile ribbon buttons and table-size grid cells now use 44 px touch targets, with taller ribbon rows and a scrollable table picker. See [basic editing](basic-editing.md) for automated checks and pending real-device/Word acceptance.

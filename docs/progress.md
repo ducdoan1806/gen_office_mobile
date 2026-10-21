@@ -44,11 +44,11 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [ ] Thêm share sheet; chọn nơi xuất trên iOS/macOS.
   - [ ] Kiểm tra file kết quả bằng Microsoft Word với tài liệu thực tế.
 
-- [ ] **Bước 6. Thêm undo/redo và khôi phục phiên**
+- [x] **Bước 6. Thêm undo/redo và khôi phục phiên**
   - [x] Nối và kiểm thử undo/redo.
   - [x] Android giữ URI và quyền truy cập file nguồn qua các lần khởi động; chỉ báo Lưu thành công sau khi ghi/đọc xác minh nguồn.
-  - [ ] Thêm snapshot/tự động lưu và khôi phục khi app đóng đột ngột.
-  - [ ] Kiểm thử phục hồi sau crash hoặc hệ điều hành thu hồi app.
+  - [x] Tạo bản tạm DOCX mỗi 5 giây và khi chuyển nền; khôi phục qua màn hình chính, giữ dirty cho đến khi Lưu vào nguồn.
+  - [x] Kiểm thử phục hồi mất tiến trình bằng force-stop Android rồi chạy tiến trình mới; kiểm tra nguồn thay đổi, lỗi/hủy Lưu và dọn bản tạm sau Lưu thành công. Đây là mô phỏng crash/thu hồi app trên emulator, chưa ép crash native/LMK thật. Xem [khôi phục phiên](session-recovery.md).
 
 - [ ] **Bước 7. Tích hợp PDF viewer**
   - [ ] Mở và hiển thị PDF thật.
@@ -85,7 +85,7 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Khi tiếp tục phát triển, ưu tiên phần còn thiếu của **bước 6**: snapshot/tự động lưu, khôi phục phiên và kiểm thử phục hồi sau crash hoặc hệ điều hành thu hồi app. Sau đó là **bước 7** (PDF viewer), rồi các mục còn thiếu của **bước 9** (XLSX, PPTX và iOS).
+Bước 6 đã hoàn thành trong luồng DOCX hiện tại trên Android emulator: bản tạm, khôi phục ở tiến trình mới, xử lý lỗi lưu và dọn bản tạm. Khi tiếp tục phát triển, ưu tiên **bước 7** (PDF viewer), rồi các mục còn thiếu của **bước 9** (XLSX, PPTX và iOS).
 
 Chưa tiếp tục bước 5, các mục nghiệm thu điện thoại thật/Word đang hoãn hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
