@@ -4,10 +4,15 @@ Cập nhật: 21/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
+## Phạm vi phát triển hiện tại
+
+Ưu tiên xây dựng và hoàn thiện ứng dụng trên **Android**. Tạm hoãn phát triển, build và kiểm thử iOS cho đến khi chủ dự án yêu cầu tiếp tục. Giữ lại mã nguồn, cấu hình và kết quả iOS đã có; các kết quả cũ không xác nhận những thay đổi mới đã tương thích iOS.
+
 ## Các mục tạm hoãn theo yêu cầu
 
 - **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
 - **Nghiệm thu DOCX trên điện thoại thật và đối chiếu Microsoft Word:** tiếp tục tạm hoãn các mục tương ứng ở bước 2, 4, 8 và mốc DOCX đầu tiên. Các mục này vẫn để chưa hoàn thành.
+- **iOS:** tạm hoãn toàn bộ công việc còn lại ở bước 9 và việc kiểm thử lại các tính năng mới trên iOS. Các dấu hoàn thành cũ được giữ như lịch sử kết quả đã làm.
 - **AI:** tiếp tục tạm hoãn như đã thống nhất.
 
 ## Lộ trình đã thống nhất
@@ -85,7 +90,7 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Bước 6 đã hoàn thành trong luồng DOCX hiện tại trên Android emulator: bản tạm, khôi phục ở tiến trình mới, xử lý lỗi lưu và dọn bản tạm. Khi tiếp tục phát triển, ưu tiên **bước 7** (PDF viewer), rồi các mục còn thiếu của **bước 9** (XLSX, PPTX và iOS).
+Bước 6 đã hoàn thành trong luồng DOCX hiện tại trên Android emulator: bản tạm, khôi phục ở tiến trình mới, xử lý lỗi lưu và dọn bản tạm. Khi tiếp tục phát triển, ưu tiên **bước 7** (PDF viewer trên Android), rồi các mục XLSX/PPTX của **bước 9** trên Android. Phần iOS tiếp tục tạm hoãn.
 
 Chưa tiếp tục bước 5, các mục nghiệm thu điện thoại thật/Word đang hoãn hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
