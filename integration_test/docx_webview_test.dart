@@ -13,6 +13,7 @@ import 'package:gen_office_mobile/features/editor/data/webview_document_editor_b
 import 'package:gen_office_mobile/features/editor/domain/editor_document.dart';
 import 'package:gen_office_mobile/features/editor/presentation/mobile_docx_editor_page.dart';
 import 'package:gen_office_mobile/features/documents/data/local_document_repository.dart';
+import 'package:gen_office_mobile/features/documents/data/android_document_files.dart';
 import 'package:gen_office_mobile/features/documents/presentation/document_library_page.dart';
 import 'package:gen_office_mobile/app/dependencies.dart';
 import 'package:gen_office_mobile/features/ai/data/mock_factory_ai_service.dart';
@@ -30,6 +31,50 @@ Future<void> pumpUntil(WidgetTester tester, bool Function() predicate) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  // Keep editor regressions deterministic. The real SAF picker/provider is
+  // exercised separately by Android SourceDocumentTest, including revocation.
+  late Directory sourceDirectory;
+  var sourceSequence = 0;
+  var failSourceWrites = false;
+  setUp(() async {
+    failSourceWrites = false;
+    sourceDirectory = await (await getTemporaryDirectory()).createTemp(
+      'editor-source-',
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(AndroidDocumentFiles.channel, (call) async {
+          final args = call.arguments as Map?;
+          if (call.method == 'open' || call.method == 'create') {
+            final name = call.method == 'create'
+                ? args!['name'] as String
+                : 'linked-original.docx';
+            final data = (await rootBundle.load(
+              'assets/samples/factory-demo.docx',
+            )).buffer.asUint8List();
+            final file = File(
+              '${sourceDirectory.path}/${++sourceSequence}.docx',
+            );
+            await file.writeAsBytes(data);
+            return {'uri': file.uri.toString(), 'name': name, 'bytes': data};
+          }
+          final file = File.fromUri(Uri.parse(args!['uri'] as String));
+          if (call.method == 'read') return file.readAsBytes();
+          if (call.method == 'write') {
+            if (failSourceWrites) {
+              throw PlatformException(code: 'write_revoked');
+            }
+            await file.writeAsBytes(args['bytes'] as Uint8List, flush: true);
+            expect(await file.readAsBytes(), args['bytes']);
+            return null;
+          }
+          throw StateError('Unexpected source method');
+        });
+  });
+  tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(AndroidDocumentFiles.channel, null);
+    await sourceDirectory.delete(recursive: true);
+  });
   testWidgets(
     'library import opens native WebView and refreshes after returning',
     (tester) async {
@@ -289,6 +334,22 @@ void main() {
       expect(afterSecondSave.single.id, imported.id);
       expect(afterSecondSave.single.filePath, secondSave.path);
       expect(await File(secondSave.path).readAsBytes(), isNotEmpty);
+      final sourceUri = afterSecondSave.single.sourceUri!;
+      final savedSource = await const AndroidDocumentFiles().read(sourceUri);
+      expect(savedSource, await File(secondSave.path).readAsBytes());
+      await bridge.controller.runJavaScript("""
+        const p=document.querySelector('.ProseMirror p');
+        const r=document.createRange();r.selectNodeContents(p);r.collapse(false);
+        const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+        document.querySelector('.ProseMirror').focus();
+        document.execCommand('insertText',false,' — unsaved permission test');
+      """);
+      expect(await bridge.hasUnsavedChanges(), true);
+      failSourceWrites = true;
+      await expectLater(bridge.save(), throwsA(anything));
+      expect(await bridge.hasUnsavedChanges(), true);
+      expect(await const AndroidDocumentFiles().read(sourceUri), savedSource);
+      failSourceWrites = false;
     });
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();

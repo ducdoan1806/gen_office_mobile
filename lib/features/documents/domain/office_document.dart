@@ -7,6 +7,7 @@ class OfficeDocument {
     required this.format,
     this.assetPath,
     this.filePath,
+    this.sourceUri,
     this.createdAt,
     this.updatedAt,
     this.sizeBytes,
@@ -16,6 +17,7 @@ class OfficeDocument {
   final DocumentFormat format;
   final String? assetPath;
   final String? filePath;
+  final String? sourceUri;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final int? sizeBytes;

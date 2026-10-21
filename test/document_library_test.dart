@@ -92,7 +92,7 @@ void main() {
 
       await showLibrary();
       expect(
-        find.text('Chưa có tài liệu. Nhấn “Nhập DOCX” để thêm.'),
+        find.text('Chưa có tài liệu. Nhấn “Mở DOCX” để thêm.'),
         findsOneWidget,
       );
       expect(find.byKey(const Key('import-docx')), findsOneWidget);

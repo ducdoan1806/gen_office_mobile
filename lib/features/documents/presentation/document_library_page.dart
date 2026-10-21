@@ -5,6 +5,7 @@ import '../../editor/presentation/document_editor_page.dart';
 import '../../editor/presentation/mobile_docx_editor_page.dart';
 import '../domain/office_document.dart';
 import '../data/docx_file_picker.dart';
+import '../data/android_document_files.dart';
 import '../data/local_document_repository.dart';
 
 class DocumentLibraryPage extends StatefulWidget {
@@ -60,6 +61,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       final document = await widget.dependencies.documents.storeDocx(
         file.name,
         await file.readAsBytes(),
+        sourceUri: file is SourceDocxFile ? file.sourceUri : null,
       );
       if (!mounted) return;
       _reload();
@@ -68,7 +70,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Không nhập được DOCX: $error')));
+        ).showSnackBar(SnackBar(content: Text('Không mở được DOCX: $error')));
       }
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -97,14 +99,14 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               child: CircularProgressIndicator(),
             )
           : const Icon(Icons.add),
-      label: const Text('Nhập DOCX'),
+      label: const Text('Mở DOCX'),
     ),
     body: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Padding(
           padding: EdgeInsets.all(16),
-          child: Text('Tài liệu của bạn'),
+          child: Text('Tài liệu gần đây'),
         ),
         Expanded(
           child: FutureBuilder<List<OfficeDocument>>(
@@ -130,7 +132,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               final documents = snapshot.data!;
               if (documents.isEmpty) {
                 return const Center(
-                  child: Text('Chưa có tài liệu. Nhấn “Nhập DOCX” để thêm.'),
+                  child: Text('Chưa có tài liệu. Nhấn “Mở DOCX” để thêm.'),
                 );
               }
               return ListView.builder(
@@ -144,6 +146,9 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                     subtitle: Text(
                       [
                         document.format.name.toUpperCase(),
+                        document.sourceUri != null
+                            ? 'File gốc'
+                            : 'Bản trong app',
                         if (document.sizeBytes != null)
                           '${(document.sizeBytes! / 1024).ceil()} KB',
                         if (document.updatedAt != null ||

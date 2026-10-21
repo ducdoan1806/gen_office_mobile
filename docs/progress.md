@@ -20,9 +20,9 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 
 - [x] **Bước 3. Thêm chọn và mở file DOCX thật**
   - [x] Chọn DOCX bằng file picker native và mở trong editor.
-  - [x] Sao chép file import vào kho tài liệu lâu dài của app.
-  - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút nhập DOCX.
-  - Theo lựa chọn của chủ dự án, **Lưu** cập nhật đúng tài liệu đang mở trong thư viện, không tạo mục trùng; **Lưu thành bản mới** tạo bản riêng. File nguồn bên ngoài app vẫn được giữ nguyên. Cần nghiệm thu điện thoại thật ở bước 2/8. Xem [kho tài liệu](document-library.md).
+  - [x] Android giữ liên kết và quyền đọc/ghi file gốc; kho riêng giữ cache và metadata.
+  - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút Mở DOCX.
+  - Yêu cầu đã chỉnh lại: Android **Lưu ghi đè chính file nguồn đã mở** bằng SAF; đọc lại từ nguồn khi mở gần đây. Bản cũ trong app cần chọn lại file gốc. **Lưu thành bản mới** chọn nơi lưu qua Android. Xem [kho tài liệu](document-library.md).
 
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
   - [x] Tích hợp sửa nội dung, định dạng chữ, đoạn và bảng từ editor gốc.
@@ -32,15 +32,15 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [ ] Nghiệm thu đầy đủ trên điện thoại thật với bộ DOCX nhà máy, đối chiếu định dạng Word.
 
 - [ ] **Bước 5. Lưu, xuất và chia sẻ DOCX**
-  - [x] Lưu cập nhật DOCX đang mở trong thư viện; Lưu thành bản mới tạo bản riêng dưới `GenOffice/exports`.
+  - [x] Android Lưu cập nhật file nguồn đã chọn; Lưu thành bản mới chọn đích bằng ACTION_CREATE_DOCUMENT.
   - [x] Kiểm thử lưu native và mở lại file kết quả.
   - [x] Cảnh báo thay đổi chưa lưu khi quay lại/mở file khác.
-  - [ ] Thêm chọn nơi xuất và chia sẻ qua share sheet.
+  - [ ] Thêm share sheet; chọn nơi xuất trên iOS/macOS.
   - [ ] Kiểm tra file kết quả bằng Microsoft Word với tài liệu thực tế.
 
 - [ ] **Bước 6. Thêm undo/redo và khôi phục phiên**
   - [x] Nối và kiểm thử undo/redo.
-  - [x] Giữ file nguồn ngoài app; cập nhật bản trong thư viện khi Lưu, tạo bản riêng khi Lưu thành bản mới.
+  - [x] Android giữ URI và quyền truy cập file nguồn qua các lần khởi động; chỉ báo Lưu thành công sau khi ghi/đọc xác minh nguồn.
   - [ ] Thêm snapshot/tự động lưu và khôi phục khi app đóng đột ngột.
   - [ ] Kiểm thử phục hồi sau crash hoặc hệ điều hành thu hồi app.
 

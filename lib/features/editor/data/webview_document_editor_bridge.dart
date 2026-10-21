@@ -89,7 +89,9 @@ class WebViewDocumentEditorBridge implements DocumentEditorBridge {
     _pending[id] = completer;
     final payload = jsonEncode({'id': id, 'method': method, 'args': args});
     // Payload is serialized JSON data, never interpolated executable source.
-    final response = completer.future.timeout(const Duration(seconds: 50));
+    final response = completer.future.timeout(
+      Duration(seconds: method == 'save' ? 600 : 50),
+    );
     try {
       try {
         await controller.runJavaScript(

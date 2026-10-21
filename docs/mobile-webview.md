@@ -7,7 +7,7 @@
 3. The mobile host installs the allowlisted `genOfficeMobile.receive` endpoint before the original renderer loads.
 4. The original React lifecycle emits readiness after its editor is mounted. Flutter sends correlated open/save/undo/redo/status commands.
 5. DOCX bytes are fetched from a tokenized document URL; no full-document base64 string crosses the JS channel.
-6. On save, original ProseMirror→DOCX serialization POSTs bytes to the local export endpoint. Flutter writes the new bytes and commits the library metadata before acknowledging success. Normal Save updates the current library ID; Save As / a new document sends `mode=copy` to create a separate ID. JS then completes the original save/reparse pipeline and returns the command result.
+6. On save, original ProseMirror→DOCX serialization POSTs bytes to the local export endpoint. On Android Flutter writes the selected source URI through ContentResolver, reads back to verify bytes, then commits cached content and recent-file metadata before acknowledging success. Normal Save updates the current library ID; Save As / a new document sends `mode=copy` to create a separate ID. JS then completes the original save/reparse pipeline and returns the command result.
 
 ## Protocol v1
 
@@ -25,8 +25,8 @@ iOS: NSAllowsLocalNetworking permits local resources. macOS additionally has cli
 
 ## Current behavior and limits
 
-- The app opens its persistent document library; both the library import button and editor folder button use native file_selector. Imported DOCX bytes are copied into app-private Documents before opening. Bundled samples remain available to tests.
-- Native Save updates the current library document and its modification time without adding a row. Save As creates a separate app-private export, then subsequent saves update that copy. The native host tracks the document most recently opened inside the editor. Source files outside the app remain unchanged, as requested. User-selected export destinations and share sheet are still pending. See [document library](document-library.md).
+- Android uses ACTION_OPEN_DOCUMENT with persisted read/write grants. Recent entries retain the source content URI; opening reads current source bytes. Private storage holds metadata/cache. iOS/macOS continue to use file_selector and private copies. Bundled samples remain available to tests.
+- Android Save updates the actual source file; errors keep the renderer dirty and never silently fall back to cache. Legacy entries require selecting their original file once. Save As uses ACTION_CREATE_DOCUMENT and subsequent Save follows that new URI. Source URIs stay in the native host, outside the renderer. No broad storage permission is requested. See [document library](document-library.md).
 - Flutter back/open checks the renderer's composite dirty state and asks before discarding.
 - Original toolbar download actions use native saving in mobile mode. Desktop print/image-picker integrations remain unavailable in mobile mode.
 - Recovery/autosave is not promised. 20 MB import / 32 MB export limits apply; saved files up to 32 MB can reopen from the library. Expanded OOXML memory also depends on upstream parsing.

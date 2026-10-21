@@ -7,16 +7,21 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 
 import '../domain/document_repository.dart';
+import 'android_document_files.dart';
 import '../domain/office_document.dart';
 
 /// Each document is committed with its metadata by renaming a staged directory.
 /// Paths in metadata are relative, since iOS can relocate the app container.
 class LocalDocumentRepository implements DocumentRepository {
-  LocalDocumentRepository({Future<Directory> Function()? documentsDirectory})
-    : _documentsDirectory =
-          documentsDirectory ?? getApplicationDocumentsDirectory;
+  LocalDocumentRepository({
+    Future<Directory> Function()? documentsDirectory,
+    AndroidDocumentFiles sourceFiles = const AndroidDocumentFiles(),
+  }) : _sourceFiles = sourceFiles,
+       _documentsDirectory =
+           documentsDirectory ?? getApplicationDocumentsDirectory;
 
   final Future<Directory> Function() _documentsDirectory;
+  final AndroidDocumentFiles _sourceFiles;
   static const maxImportBytes = 20 * 1024 * 1024;
   static const maxExportBytes = 32 * 1024 * 1024;
   static final _idPattern = RegExp(r'^[a-f0-9]{32}$');
@@ -54,6 +59,7 @@ class LocalDocumentRepository implements DocumentRepository {
         name: data['name'] as String,
         format: DocumentFormat.docx,
         filePath: '${directory.path}/${_contentFile(data)}',
+        sourceUri: data['sourceUri'] as String?,
         createdAt: DateTime.parse(data['createdAt'] as String),
         updatedAt: DateTime.parse(
           (data['updatedAt'] ?? data['createdAt']) as String,
@@ -69,6 +75,7 @@ class LocalDocumentRepository implements DocumentRepository {
     String name,
     Uint8List bytes, {
     bool isExport = false,
+    String? sourceUri,
   }) async {
     // The display name is never used as a filesystem path.
     name = name.split(RegExp(r'[/\\]')).last.trim();
@@ -82,6 +89,11 @@ class LocalDocumentRepository implements DocumentRepository {
       throw ArgumentError(
         'DOCX phải có nội dung và không vượt ${limit ~/ (1024 * 1024)} MB.',
       );
+    }
+    if (sourceUri != null) {
+      for (final existing in await list()) {
+        if (existing.sourceUri == sourceUri) return existing;
+      }
     }
     final id = _newId();
     final parent = Directory(
@@ -101,6 +113,7 @@ class LocalDocumentRepository implements DocumentRepository {
           'id': id,
           'name': name,
           'format': 'docx',
+          if (sourceUri != null) 'sourceUri': sourceUri,
           'createdAt': createdAt.toIso8601String(),
           'updatedAt': createdAt.toIso8601String(),
           'sizeBytes': bytes.length,
@@ -113,6 +126,7 @@ class LocalDocumentRepository implements DocumentRepository {
         name: name,
         format: DocumentFormat.docx,
         filePath: '${committed.path}/content.docx',
+        sourceUri: sourceUri,
         createdAt: createdAt,
         updatedAt: createdAt,
         sizeBytes: bytes.length,
@@ -124,7 +138,11 @@ class LocalDocumentRepository implements DocumentRepository {
   }
 
   @override
-  Future<OfficeDocument> updateDocx(String id, Uint8List bytes) async {
+  Future<OfficeDocument> updateDocx(
+    String id,
+    Uint8List bytes, {
+    String? sourceUri,
+  }) async {
     if (!_idPattern.hasMatch(id)) {
       throw ArgumentError('ID tài liệu không hợp lệ.');
     }
@@ -156,6 +174,7 @@ class LocalDocumentRepository implements DocumentRepository {
       final metadata = File('${directory.path}/.document-$revision.tmp');
       final updated = <String, dynamic>{
         ...data,
+        if (sourceUri != null) 'sourceUri': sourceUri,
         'contentFile': 'content-$revision.docx',
         'updatedAt': DateTime.now().toUtc().toIso8601String(),
         'sizeBytes': bytes.length,
@@ -163,6 +182,8 @@ class LocalDocumentRepository implements DocumentRepository {
       try {
         await content.writeAsBytes(bytes, flush: true);
         await metadata.writeAsString(jsonEncode(updated), flush: true);
+        final target = updated['sourceUri'] as String?;
+        if (target != null) await _sourceFiles.write(target, bytes);
         // The current bytes stay readable until this final pointer replacement.
         await metadata.rename('${directory.path}/document.json');
       } catch (_) {

@@ -158,13 +158,18 @@ class EditorAssetServer {
       response.add(
         data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
       );
-    } catch (_) {
+    } catch (error) {
       response.statusCode = HttpStatus.internalServerError;
       response.headers.contentType = ContentType.json;
       response.write(
         jsonEncode({
           'ok': false,
-          'error': 'Không đọc hoặc ghi được dữ liệu editor.',
+          'error': error is PlatformException
+              ? error.message ??
+                    'Không truy cập được file gốc. Hãy mở lại file.'
+              : error is StateError
+              ? error.message
+              : 'Không đọc hoặc ghi được dữ liệu editor.',
         }),
       );
     } finally {
