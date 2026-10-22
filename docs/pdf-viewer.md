@@ -30,3 +30,11 @@ Chạy kiểm thử native bằng `assembleDebugAndroidTest`, cài APK bằng `a
 ## Bổ sung 22/10/2026 — Samsung Android thật
 
 3 bài WebView PDF và bài SAF chỉ đọc/thu hồi quyền đã đạt trên Samsung SM-A075F/Android 16/ARM64. Xem [kết quả máy thật](android-device-qa.md).
+
+## Cập nhật giao diện gốc GenOffice — 22/10/2026
+
+`pdf.html` hiện tải nguyên `vendor/pdf/src/renderer/App.tsx` và ribbon/CSS của source GenOffice commit `1cb2925afe173b266c1545a3871a397429e11b7e`, tương tự DOCX. Giữ danh sách thumbnail, canvas nhiều trang, thanh tìm kiếm/tô sáng, zoom và điều hướng của App gốc; thanh tab/công cụ vuốt ngang trên màn hình nhỏ. Bộ tìm kiếm hiện là handler của PDF App gốc.
+
+Phạm vi Android vẫn chỉ đọc: cưỡng chế `readOnly` tại App, không cho thay đổi tài liệu và server tiếp tục chặn xuất/ghi PDF. Các nút sửa trong ribbon gốc bị vô hiệu hóa theo trạng thái chỉ đọc; dịch vụ desktop chưa tích hợp báo chưa hỗ trợ. AI ẩn, iOS hoãn. Worker/CMap/font/WASM vẫn đóng gói offline; không gọi CDN.
+
+Sau port giao diện gốc, 3 ca PDF WebView trên Samsung Android 16 đã đạt: mở từ nút chung, chuyển đến trang cuối khi fit nhỏ, tìm cụm chữ/nhiều kết quả/không có kết quả, tô sáng, file hỏng và giữ nguyên nguồn. Xem [QA Android](android-device-qa.md).

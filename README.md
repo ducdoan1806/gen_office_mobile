@@ -2,7 +2,7 @@
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
-Android có một nút **Mở tài liệu** cho DOCX, DOC và PDF. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF có viewer offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX/PPTX chưa tích hợp thực tế. Ưu tiên Android; iOS hiện tạm hoãn.
+Android có một nút **Mở tài liệu** cho DOCX, DOC, PDF, XLSX và PPTX. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF dùng App/ribbon gốc GenOffice, chạy offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX và PPTX dùng nguyên App/ribbon từ source GenOffice như DOCX: lưới/thanh công thức/sheet tabs của Sheets, canvas/danh sách slide/ghi chú của Slides. Có lưu nguồn, undo/redo và bản phục hồi; các công cụ nâng cao desktop chưa được chuyển đầy đủ. Xem [Sheets/Slides Android](docs/sheets-slides-android.md). Ưu tiên Android; iOS hiện tạm hoãn.
 
 ## 1. Chuẩn bị môi trường
 
@@ -72,7 +72,7 @@ Nếu chỉ kết nối một thiết bị phù hợp, có thể dùng `flutter 
 ### Thử chỉnh sửa DOCX
 
 1. Bấm **Mở tài liệu**, chọn file trong Downloads hoặc thư mục khác bằng trình chọn tệp Android.
-2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn DOCX/DOC/PDF khác từ thiết bị; app tự mở đúng màn hình và hỏi nếu có thay đổi chưa lưu.
+2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn DOCX/DOC/PDF/XLSX/PPTX khác từ thiết bị; app tự mở đúng màn hình và hỏi nếu có thay đổi chưa lưu.
 3. Chỉnh sửa trong editor; thanh menu có thể cuộn ngang và nhãn không xuống dòng.
 4. Dùng các nút **undo/redo** để hoàn tác/làm lại.
 5. Bấm biểu tượng **lưu** để cập nhật chính file đã chọn. Dòng trạng thái xác nhận lưu vào file gốc khi ghi và đọc lại xác minh thành công.
@@ -83,7 +83,7 @@ App tạo bản tạm cho DOCX đang sửa khoảng mỗi 5 giây. Nếu app b�
 
 ### Thử đọc PDF trên Android
 
-Bấm nút chung **Mở tài liệu**, chọn PDF trong điện thoại (tối đa 20 MB). Dùng trang trước/sau hoặc nhập số trang; nhập chữ và bấm **Tìm**, dùng ↑/↓ để chuyển kết quả. Có nút phóng to/thu nhỏ/vừa trang. File xuất hiện trong danh sách gần đây và được mở lại từ nguồn. PDF chỉ đọc; file scan không có lớp text chưa tìm chữ được, file có mật khẩu chưa hỗ trợ. Xem [PDF viewer](docs/pdf-viewer.md).
+Bấm nút chung **Mở tài liệu**, chọn PDF trong điện thoại (tối đa 20 MB). Dùng danh sách thumbnail hoặc nhập số trang; mở **Tìm kiếm**, nhập chữ và dùng ‹/› để chuyển kết quả. Có nút phóng to/thu nhỏ/vừa trang. File xuất hiện trong danh sách gần đây và được mở lại từ nguồn. PDF chỉ đọc; file scan không có lớp text chưa tìm chữ được, file có mật khẩu chưa hỗ trợ. Xem [PDF viewer](docs/pdf-viewer.md).
 
 ## 4. Build APK và cài lên điện thoại
 
@@ -217,7 +217,7 @@ editor_web/
   tests/                     # Kiểm thử engine
   e2e/                       # Kiểm thử trình duyệt và protocol mobile
 assets/editor/               # Runtime editor đã build, được commit
-assets/samples/              # DOCX mẫu
+assets/samples/              # DOCX/XLSX/PPTX mẫu
 integration_test/            # Kiểm thử WebView trên thiết bị
 android/ ios/ macos/         # Cấu hình nền tảng native
 tool/bundle_editor.mjs       # Build và đóng gói editor vào Flutter
@@ -228,7 +228,7 @@ Chi tiết: [bridge mobile](docs/mobile-webview.md), [tách editor khỏi Electr
 
 ## 9. Giới hạn hiện tại
 
-- DOCX có chỉnh sửa/lưu; PDF có xem/tìm kiếm/điều hướng trên Android. XLSX/PPTX vẫn là màn hình mẫu.
+- DOCX có chỉnh sửa/lưu; PDF có xem/tìm kiếm/điều hướng; XLSX có sửa ô/công thức và PPTX có xem/sửa văn bản slide trên Android. Các công cụ nâng cao Sheets/Slides còn cần mở rộng và nghiệm thu.
 - Giới hạn import 20 MB và export 32 MB. Bộ nhớ khi giải nén/hiển thị còn tùy nội dung file.
 - DOCX đã có bản tạm và phục hồi sau mất tiến trình; chỉ bảo vệ đến checkpoint hoàn chỉnh gần nhất. File nguồn Android được lưu qua SAF; cache và bản tạm riêng có thể mất khi gỡ ứng dụng. Xem [khôi phục phiên](docs/session-recovery.md).
 - Ribbon gốc đã hỗ trợ cuộn ngang; vẫn cần tối ưu cảm ứng và kiểm tra trên nhiều điện thoại thật.

@@ -1,3 +1,4 @@
+import 'factory_docx_test.dart' show withFrames;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ void main() {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
-      if (await condition()) return;
+      if (await tester.runAsync(condition) == true) return;
     }
     throw StateError('PDF condition timed out');
   }
@@ -115,61 +116,68 @@ void main() {
         ),
       ),
     );
+    Future<void> execute(String script) =>
+        withFrames(tester, () => controller!.runJavaScript(script));
     Future<bool> js(String expression) async =>
         controller != null &&
         await controller!.runJavaScriptReturningResult(expression) == true;
     await waitFor(
       tester,
-      () => js(
-        '!!document.querySelector(".page canvas") && !document.querySelector("#next").disabled',
-      ),
+      () => js('!!document.querySelector(".pdf-page canvas")'),
     );
     await waitFor(
       tester,
       () async => find.byType(LinearProgressIndicator).evaluate().isEmpty,
     );
-    await controller!.runJavaScript('document.querySelector("#next").click()');
-    await waitFor(
-      tester,
-      () => js('document.querySelector("#page").value === "2"'),
-    );
-    await controller!.runJavaScript(
-      'document.querySelector("#page").value="3";document.querySelector("#page").dispatchEvent(new Event("change"))',
+    await execute(
+      '''document.querySelector('.pdf-thumb[data-idx="1"]').click()''',
     );
     await waitFor(
       tester,
-      () => js('document.querySelector("#page").value === "3"'),
+      () =>
+          js('''!!document.querySelector('.pdf-thumb-active[data-idx="1"]')'''),
     );
-    await controller!.runJavaScript(
-      'document.querySelector("#query").value="Machine inspection";document.querySelector("#searchForm").dispatchEvent(new Event("submit",{cancelable:true}))',
+    await execute(
+      '''document.querySelector('.pdf-thumb[data-idx="2"]').click()''',
     );
+    await waitFor(
+      tester,
+      () =>
+          js('''!!document.querySelector('.pdf-thumb-active[data-idx="2"]')'''),
+    );
+    await execute(
+      '''[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Tìm kiếm').click();''',
+    );
+    await waitFor(
+      tester,
+      () => js('!!document.querySelector(".pdf-search-input")'),
+    );
+    Future<void> search(String query) => execute('''
+      (()=>{
+      const input=document.querySelector('.pdf-search-input');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${jsonEncode(query)});
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+      })();
+    ''');
+    await search('Machine inspection');
     await waitFor(
       tester,
       () => js(
-        'document.querySelector("#status").textContent.includes("1/1") && document.querySelector("#page").value === "2"',
+        'document.querySelector(".pdf-search-count").textContent.includes("1") && !!document.querySelector(".pdf-search-hit")',
       ),
     );
-    await waitFor(
-      tester,
-      () => js('!!document.querySelector(".textLayer .highlight")'),
-    );
-    await controller!.runJavaScript(
-      'document.querySelector("#query").value="Factory safety";document.querySelector("#searchForm").dispatchEvent(new Event("submit",{cancelable:true}))',
-    );
-    await waitFor(
-      tester,
-      () => js('document.querySelector("#status").textContent.includes("/3")'),
-    );
-    await controller!.runJavaScript(
-      'document.querySelector("#findNext").click()',
-    );
-    await controller!.runJavaScript(
-      'document.querySelector("#query").value="no-such-word-123";document.querySelector("#searchForm").dispatchEvent(new Event("submit",{cancelable:true}))',
-    );
+    await search('Factory safety');
     await waitFor(
       tester,
       () => js(
-        'document.querySelector("#status").textContent.includes("Không tìm thấy")',
+        'document.querySelector(".pdf-search-count").textContent.includes("3")',
+      ),
+    );
+    await search('no-such-word-123');
+    await waitFor(
+      tester,
+      () => js(
+        'document.querySelector(".pdf-search-count").textContent.includes("Không")',
       ),
     );
     expect(await file.readAsBytes(), bytes);

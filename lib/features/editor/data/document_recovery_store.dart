@@ -85,7 +85,9 @@ class DocumentRecoveryStore {
           document: OfficeDocument(
             id: data['id'] as String,
             name: data['name'] as String,
-            format: DocumentFormat.docx,
+            format: DocumentFormat.values.byName(
+              (data['format'] ?? 'docx') as String,
+            ),
             sourceUri: data['sourceUri'] as String?,
             assetPath: data['assetPath'] as String?,
             filePath: data['filePath'] as String?,
@@ -167,6 +169,7 @@ class DocumentRecoveryStore {
             'version': 1,
             'id': document.id,
             'name': document.name,
+            'format': document.format.name,
             'sourceUri': document.sourceUri,
             'assetPath': document.assetPath,
             'filePath': document.filePath,

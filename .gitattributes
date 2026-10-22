@@ -1,0 +1,2 @@
+# Bundled runtime files have a SHA-256 manifest; preserve bytes, skip generated diffs.
+/assets/editor/** -text -diff

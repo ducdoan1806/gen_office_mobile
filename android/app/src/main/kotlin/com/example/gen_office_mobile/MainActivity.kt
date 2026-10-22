@@ -21,6 +21,7 @@ class MainActivity : FlutterActivity() {
     private var creating = false
     private var openingPdf = false
     private var openingAll = false
+    private var openingExtension = "docx"
     private val accessFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     private val maxBytes = 32 * 1024 * 1024
 
@@ -57,12 +58,14 @@ class MainActivity : FlutterActivity() {
                     result.error("busy", "Trình chọn file đang mở.", null)
                 } else {
                     creating = call.method == "create"
+                    openingExtension = if(creating) (call.argument<String>("name") ?: "document.docx").substringAfterLast('.').lowercase() else call.argument<String>("format") ?: "docx"
+                    require(openingExtension in listOf("docx","doc","pdf","xlsx","pptx","all"))
                     openingPdf = !creating && call.argument<String>("format") == "pdf"
                     openingAll = !creating && call.argument<String>("format") == "all"
                     val intent = Intent(if (creating) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
-                        type = if (openingAll) "*/*" else if (openingPdf) "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                        type = when { openingAll -> "*/*"; openingExtension=="pdf" -> "application/pdf"; openingExtension=="xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; openingExtension=="pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"; else -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }
+                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"))
                         addFlags((if (openingPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags) or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                         if (creating) putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "document.docx")
                     call.argument<String>("initialUri")?.let {
@@ -133,13 +136,14 @@ class MainActivity : FlutterActivity() {
         val isNew = creating
         val isPdf = openingPdf
         val isAll = openingAll
+        val expectedExtension = openingExtension
         background(result) {
             var name = "document.docx"
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) name = cursor.getString(0)
             }
             val extension = name.substringAfterLast('.', "").lowercase()
-            require(if (isAll) extension in listOf("docx", "pdf", "doc") else extension == if (isPdf) "pdf" else "docx") { "Loại file không hợp lệ." }
+            require(if (isAll) extension in listOf("docx", "pdf", "doc", "xlsx", "pptx") else extension == expectedExtension) { "Loại file không hợp lệ." }
             val granted = data.flags and accessFlags
             val required = if (extension == "pdf") Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags
             require(granted and required == required) { "File thiếu quyền truy cập cần thiết." }

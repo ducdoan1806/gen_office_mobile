@@ -1,0 +1,12 @@
+import {describe,it,expect} from 'vitest';
+import {readFileSync} from 'fs';
+import JSZip from 'jszip';
+import {readXlsxSession,serializeXlsxSession} from '../src/upstream/xlsx-session';
+import {workbookFileSchema,workbookRangeResultSchema,workbookSaveRequestSchema} from '../vendor/sheets/src/shared/desktop-api';
+const fixture=()=>new Uint8Array(readFileSync(new URL('../../assets/samples/sheets-test.xlsx',import.meta.url)));
+function request(s:any,edits:any[]=[]){return workbookSaveRequestSchema.parse({sessionId:s.file.sessionId,mode:edits.length?'save':'save-as',edits,structuralOps:[],chartEdits:[],visualEdits:[],visualAdditions:[],tableAdditions:[],pivotAdditions:[],sheetOps:[],sheetOrder:[],filterStates:[],hyperlinkEdits:[],cfStates:[],dvStates:[],pageSetupStates:[],noteStates:[],formulaValues:[],pivotCacheRefreshPaths:[],pivotRefreshUpdates:[],sheetProtections:[],definedNamesState:null});}
+describe('original Sheets renderer host contract',()=>{
+ it('supplies metadata and ranges accepted by the original preload schemas',async()=>{const s=await readXlsxSession(fixture(),'test.xlsx');expect(()=>workbookFileSchema.parse(s.file)).not.toThrow();for(const range of s.ranges.values())expect(()=>workbookRangeResultSchema.parse(range)).not.toThrow();expect(s.file.sheets).toHaveLength(2);expect(s.ranges.get(s.file.sheets[0].id).merges).toContainEqual({startRow:3,endRow:3,startColumn:0,endColumn:3});});
+ it('keeps an unchanged workbook byte-identical',async()=>{const original=fixture(),s=await readXlsxSession(original,'test.xlsx');expect((await serializeXlsxSession(s,request(s))).bytes).toEqual(original);});
+ it('writes value and formatting through the original gateway and retains charts',async()=>{const original=fixture(),s=await readXlsxSession(original,'test.xlsx');const saved=await serializeXlsxSession(s,request(s,[{sheetId:s.file.sheets[0].id,row:1,column:1,writeValue:true,value:25,style:{bold:true}}]));const again=await readXlsxSession(saved.bytes,'test.xlsx'),cells=again.ranges.get(again.file.sheets[0].id).cells;const b2=cells.find((c:any)=>c.row===1&&c.column===1);expect(b2.value).toBe(25);expect(again.file.styles[b2.styleIndex].bold).toBe(true);expect(cells.find((c:any)=>c.row===1&&c.column===3).formula).toContain('SUM(B2:C2)');const a=await JSZip.loadAsync(original),b=await JSZip.loadAsync(saved.bytes);for(const path of Object.keys(a.files).filter(n=>n.startsWith('xl/charts/')&&!a.files[n].dir))expect(await b.file(path)!.async('uint8array')).toEqual(await a.file(path)!.async('uint8array'));});
+});

@@ -51,7 +51,11 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       MaterialPageRoute<void>(
         builder: (_) => document.format == DocumentFormat.pdf
             ? PdfViewerPage(document: document)
-            : document.format == DocumentFormat.docx
+            : [
+                DocumentFormat.docx,
+                DocumentFormat.xlsx,
+                DocumentFormat.pptx,
+              ].contains(document.format)
             ? MobileDocxEditorPage(
                 document: document,
                 recoveryStore: _recovery,
@@ -77,7 +81,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       final name = file.name.toLowerCase();
       final pdf = name.endsWith('.pdf');
       final legacyDoc = name.endsWith('.doc');
-      if (!pdf && !legacyDoc && !name.endsWith('.docx')) {
+      if (!pdf && editableFormat(name) == null) {
         throw StateError('Định dạng file chưa được hỗ trợ.');
       }
       if (await file.length() > LocalDocumentRepository.maxImportBytes) {
@@ -91,11 +95,12 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               bytes,
               sourceUri: uri,
             )
-          : await widget.dependencies.documents.storeDocx(
+          : await widget.dependencies.documents.storeOffice(
               file.name,
               bytes,
               sourceUri: uri,
               legacyDoc: legacyDoc,
+              format: editableFormat(name)!,
             );
       if (!mounted) return;
       _reload();

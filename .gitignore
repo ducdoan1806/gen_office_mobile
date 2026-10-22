@@ -68,3 +68,6 @@ app.*.map.json
 !.env.*.example
 *.pem
 *.key
+
+# Local QA scripts and temporary files
+/work/

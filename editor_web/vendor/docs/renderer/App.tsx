@@ -2329,7 +2329,10 @@ export function App() {
     }
     window.addEventListener('genoffice:command', handler)
     window.dispatchEvent(new CustomEvent('genoffice:ready'))
-    return () => window.removeEventListener('genoffice:command', handler)
+    return () => {
+      window.dispatchEvent(new CustomEvent('genoffice:not-ready'))
+      window.removeEventListener('genoffice:command', handler)
+    }
   }, [editor, doc, docLoading, loadFile, resetFile, save])
 
   // inserting a section break needs one save for the new section to take effect; the

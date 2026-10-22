@@ -31,6 +31,41 @@ String stableCoreProperties(List<int> bytes) => utf8
       (match) => '${match[1]}[save-revision]${match[2]}',
     );
 
+// Keep native platform views and WebView layout advancing during large exports.
+Future<T> withFrames<T>(
+  WidgetTester tester,
+  Future<T> Function() action,
+) async {
+  var done = false;
+  T? result;
+  Object? failure;
+  StackTrace? stack;
+  await tester.runAsync(() async {
+    action().then(
+      (value) {
+        result = value;
+        done = true;
+      },
+      onError: (Object error, StackTrace trace) {
+        failure = error;
+        stack = trace;
+        done = true;
+      },
+    );
+  });
+  for (var attempt = 0; attempt < 1800 && !done; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+  }
+  if (!done) {
+    throw StateError('Corpus operation timed out while pumping WebView frames');
+  }
+  if (failure != null) Error.throwWithStackTrace(failure!, stack!);
+  return result as T;
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets(
@@ -102,27 +137,25 @@ void main() {
         }
         expect(ready.isCompleted, true, reason: 'Open corpus document $name');
         debugPrint('CORPUS OPEN: $name');
-        final passed = await tester.runAsync(() async {
-          final unchanged = await bridge.save();
-          final unchangedZip = ZipDecoder().decodeBytes(
-            await File(unchanged.path).readAsBytes(),
+
+        final unchanged = await withFrames(tester, bridge.save);
+        final unchangedZip = ZipDecoder().decodeBytes(
+          await File(unchanged.path).readAsBytes(),
+        );
+        for (final entry in originalZip.files.where((entry) => entry.isFile)) {
+          expect(
+            sha256
+                .convert(
+                  unchangedZip.findFile(entry.name)!.content as List<int>,
+                )
+                .toString(),
+            sha256.convert(entry.content as List<int>).toString(),
+            reason: 'Unedited $name: ${entry.name}',
           );
-          for (final entry in originalZip.files.where(
-            (entry) => entry.isFile,
-          )) {
-            expect(
-              sha256
-                  .convert(
-                    unchangedZip.findFile(entry.name)!.content as List<int>,
-                  )
-                  .toString(),
-              sha256.convert(entry.content as List<int>).toString(),
-              reason: 'Unedited $name: ${entry.name}',
-            );
-          }
-          debugPrint('CORPUS UNCHANGED SAVE: $name');
-          final marker = ' — GenOffice QA ${index + 1}';
-          await bridge.controller.runJavaScript('''
+        }
+        debugPrint('CORPUS UNCHANGED SAVE: $name');
+        final marker = ' — GenOffice QA ${index + 1}';
+        await bridge.controller.runJavaScript('''
           (() => {
             const paragraph = [...document.querySelectorAll('.ProseMirror p')].find(p => p.textContent.trim());
             if (!paragraph) throw new Error('No editable paragraph');
@@ -132,65 +165,63 @@ void main() {
             document.execCommand('insertText', false, ${jsonEncode(marker)});
           })();
         ''');
-          final saved = await bridge.save();
-          final bytes = await File(saved.path).readAsBytes();
-          final editedZip = ZipDecoder().decodeBytes(bytes);
-          final xml = utf8.decode(
-            editedZip.findFile('word/document.xml')!.content as List<int>,
-          );
-          expect(xml, contains(marker), reason: name);
-          // Text editing must not change embedded images, styles, relationships,
-          // headers/footers or other untouched OOXML parts.
-          for (final entry in originalZip.files.where(
-            (entry) => entry.isFile && entry.name != 'word/document.xml',
-          )) {
-            if (entry.name == 'docProps/core.xml') {
-              expect(
-                stableCoreProperties(
-                  editedZip.findFile(entry.name)!.content as List<int>,
-                ),
-                stableCoreProperties(entry.content as List<int>),
-                reason: 'Core properties $name',
-              );
-              continue;
-            }
+        final saved = await withFrames(tester, bridge.save);
+        final bytes = await File(saved.path).readAsBytes();
+        final editedZip = ZipDecoder().decodeBytes(bytes);
+        final xml = utf8.decode(
+          editedZip.findFile('word/document.xml')!.content as List<int>,
+        );
+        expect(xml, contains(marker), reason: name);
+        // Text editing must not change embedded images, styles, relationships,
+        // headers/footers or other untouched OOXML parts.
+        for (final entry in originalZip.files.where(
+          (entry) => entry.isFile && entry.name != 'word/document.xml',
+        )) {
+          if (entry.name == 'docProps/core.xml') {
             expect(
-              sha256
-                  .convert(editedZip.findFile(entry.name)!.content as List<int>)
-                  .toString(),
-              sha256.convert(entry.content as List<int>).toString(),
-              reason: 'Edited $name: ${entry.name}',
+              stableCoreProperties(
+                editedZip.findFile(entry.name)!.content as List<int>,
+              ),
+              stableCoreProperties(entry.content as List<int>),
+              reason: 'Core properties $name',
             );
+            continue;
           }
           expect(
             sha256
-                .convert(await File(imported.filePath!).readAsBytes())
+                .convert(editedZip.findFile(entry.name)!.content as List<int>)
                 .toString(),
-            sha256.convert(source).toString(),
-            reason: 'Original $name',
+            sha256.convert(entry.content as List<int>).toString(),
+            reason: 'Edited $name: ${entry.name}',
           );
-          debugPrint('CORPUS EDITED SAVE: $name');
-          await bridge.open(
-            EditorDocument(id: 'reopened-$index', name: name, bytes: bytes),
-          );
-          final text = await bridge.controller.runJavaScriptReturningResult(
-            "document.querySelector('.ProseMirror').textContent",
-          );
-          expect(text.toString(), contains(marker), reason: name);
-          expect(bridge.error.value, isNull, reason: name);
-          final upload = await client.postUrl(
-            Uri.parse('$corpusUrl/results/$index'),
-          );
-          upload.add(bytes);
-          final uploadResponse = await upload.close();
-          expect(uploadResponse.statusCode, HttpStatus.ok);
-          await uploadResponse.drain<void>();
-          return true;
-        });
-        if (passed != true) {
-          final error = tester.takeException();
-          fail('Corpus document $name failed: $error');
         }
+        expect(
+          sha256
+              .convert(await File(imported.filePath!).readAsBytes())
+              .toString(),
+          sha256.convert(source).toString(),
+          reason: 'Original $name',
+        );
+        debugPrint('CORPUS EDITED SAVE: $name');
+        await withFrames(
+          tester,
+          () => bridge.open(
+            EditorDocument(id: 'reopened-$index', name: name, bytes: bytes),
+          ),
+        );
+        final text = await bridge.controller.runJavaScriptReturningResult(
+          "document.querySelector('.ProseMirror').textContent",
+        );
+        expect(text.toString(), contains(marker), reason: name);
+        expect(bridge.error.value, isNull, reason: name);
+        final upload = await client.postUrl(
+          Uri.parse('$corpusUrl/results/$index'),
+        );
+        upload.add(bytes);
+        final uploadResponse = await upload.close();
+        expect(uploadResponse.statusCode, HttpStatus.ok);
+        await uploadResponse.drain<void>();
+
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
         // One concise result per private file; no document contents in logs.

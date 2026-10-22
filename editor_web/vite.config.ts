@@ -7,7 +7,20 @@ const browserGuard = () => ({name:'reject-desktop-runtime',enforce:'pre' as cons
 }});
 export default defineConfig({
  base:'./', plugins:[react(),browserGuard()],
- resolve:{alias:[{find: /^.*\/ai\/AiPanel$/, replacement: path('./src/platform/disabled-ai-panel.tsx')},
+ resolve:{alias:[{find:/^@genoffice\/(pptx-engine|pptx-render|pptx-ops|docx-engine|electron-utils|agent-core|ai-provider|project-store|font-metrics)\/(.*)$/,replacement:path('./vendor/$1/src/$2')},
+{find:/^.*\/ai\/AiChatPanel$/,replacement:path('./src/platform/disabled-ai-panel.tsx')},
+{find:/^@genoffice\/ui\/(.*)$/,replacement:path('./vendor/ui/src/$1')},
+
+{find:'node:crypto',replacement:path('./src/platform/node/crypto.ts')},
+{find:'node:fs/promises',replacement:path('./src/platform/node/fs.ts')},
+{find:'node:fs',replacement:path('./src/platform/node/fs.ts')},
+{find:'node:stream/promises',replacement:path('./src/platform/node/fs.ts')},
+{find:'node:os',replacement:path('./src/platform/node/fs.ts')},
+{find:'node:path',replacement:path('./src/platform/node/path.ts')},
+{find:'node:zlib',replacement:path('./src/platform/node/zlib.ts')},
+{find:/^@genoffice\/xlsx-gateway\/(.*)$/,replacement:path('./vendor/xlsx-gateway/src/$1.ts')},
+{find:'@genoffice/pptx-ops',replacement:path('./vendor/pptx-ops/src/index.ts')},
+{find: /^.*\/ai\/AiPanel$/, replacement: path('./src/platform/disabled-ai-panel.tsx')},
 {find: '@genoffice/electron-utils/renderer-protocol', replacement: path('./vendor/electron-utils/src/renderer-protocol.ts')},
 {find: '@genoffice/electron-utils/safe-external-url', replacement: path('./vendor/electron-utils/src/safe-external-url.ts')},
 {find: '@genoffice/electron-utils/generated-images', replacement: path('./vendor/electron-utils/src/generated-images.ts')},
@@ -69,6 +82,6 @@ export default defineConfig({
 {find: '@genoffice/i18n', replacement: path('./vendor/i18n/src/index.ts')},
 {find: '@genoffice/ui', replacement: path('./vendor/ui/src/index.ts')}]},
  worker:{format:'es',plugins:()=>[browserGuard()]},
- build:{target:'es2022',rollupOptions:{input:{editor:path('./index.html'),prototype:path('./prototype.html'),pdf:path('./pdf.html')}}},
+ build:{target:'es2022',rollupOptions:{input:{editor:path('./index.html'),prototype:path('./prototype.html'),pdf:path('./pdf.html'),office:path('./office.html')}}},
  test:{include:['tests/**/*.test.ts']},
 });

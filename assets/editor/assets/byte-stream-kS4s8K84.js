@@ -1,0 +1,1 @@
+function a(e){let n=0;return new ReadableStream({pull(t){if(n>=e.length){t.close();return}const s=Math.min(n+65536,e.length);t.enqueue(e.slice(n,s)),n=s}})}function o(e){return new DecompressionStream(e)}export{o as d,a as s};

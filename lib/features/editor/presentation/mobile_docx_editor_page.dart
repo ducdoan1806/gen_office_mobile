@@ -113,6 +113,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       if (mounted) setState(() => _status = 'Chọn file gốc để lưu thay đổi');
       final target = await const AndroidDocumentFiles().pick(
         allDocuments: _currentDocument.legacyDoc,
+        format: _currentDocument.format.name,
       );
       if (target == null) throw StateError('Chưa lưu: bạn chưa chọn file gốc.');
       if (_currentDocument.legacyDoc &&
@@ -123,7 +124,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       }
       sourceUri = target.sourceUri;
     }
-    final saved = await _documents.updateDocx(
+    final saved = await _documents.updateOffice(
       previousId,
       bytes,
       sourceUri: sourceUri,
@@ -145,10 +146,11 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       sourceUri = target.sourceUri;
       name = target.name;
     }
-    final saved = await _documents.storeDocx(
+    final saved = await _documents.storeOffice(
       name,
       bytes,
       isExport: true,
+      format: _currentDocument.format,
       sourceUri: sourceUri,
     );
     await _clearRecoveryAfterSave(previousId);
@@ -166,6 +168,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
             persistExport: _persist,
             persistCopy: _persistCopy,
             persistRecovery: _persistRecovery,
+            format: _currentDocument.format.name,
           ),
         );
     _bridge = bridge;
@@ -480,12 +483,33 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       );
       return;
     }
-    final document = await _documents.storeDocx(
+    final document = await _documents.storeOffice(
       file.name,
       bytes,
       sourceUri: sourceUri,
       legacyDoc: file.name.toLowerCase().endsWith('.doc'),
+      format:
+          editableFormat(file.name) ??
+          (throw StateError('Định dạng không hỗ trợ.')),
     );
+    if (document.format != widget.document.format) {
+      await _recovery.clear(_currentDocument.id);
+      if (!mounted) return;
+      _checkpointTimer?.cancel();
+      setState(() => _allowPop = true);
+      unawaited(
+        Navigator.of(context).pushReplacement<void, void>(
+          MaterialPageRoute(
+            builder: (_) => MobileDocxEditorPage(
+              document: document,
+              documents: _documents,
+              recoveryStore: _recovery,
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     final previousId = _currentDocument.id;
     if (!await _loadDocument(
       document,
@@ -548,7 +572,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
           ),
           IconButton(
             key: const Key('save-docx'),
-            tooltip: 'Lưu DOCX',
+            tooltip: 'Lưu ${_currentDocument.format.name.toUpperCase()}',
             onPressed: _working || _error != null
                 ? null
                 : () => _perform(() async {

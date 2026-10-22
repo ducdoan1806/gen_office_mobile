@@ -28,3 +28,13 @@ class OfficeDocument {
   String get editorName =>
       legacyDoc ? '${name.substring(0, name.length - 4)}.docx' : name;
 }
+
+DocumentFormat? editableFormat(String name) {
+  final extension = name.toLowerCase().split('.').last;
+  return switch (extension) {
+    'doc' || 'docx' => DocumentFormat.docx,
+    'xlsx' => DocumentFormat.xlsx,
+    'pptx' => DocumentFormat.pptx,
+    _ => null,
+  };
+}

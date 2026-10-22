@@ -39,3 +39,7 @@ adb shell am instrument -w -e class com.example.gen_office_mobile.SourceDocument
 ```
 
 Kết quả 21/10/2026: 23 unit/widget test đạt; 1 bài SAF thật trên Android API 37 đạt (ghi đúng file Downloads, xác minh byte, thu hồi quyền báo lỗi); 3 bài Flutter WebView đạt (bao gồm lỗi ghi nguồn giữ dirty). Chưa kiểm thử tiến trình Android khởi động lại/reboot thiết bị với quyền đã giữ; kiểm thử repository dựng lại và kiểm tra persisted grants đã đạt.
+
+## Sheets và Slides trên Android
+
+Nút Mở tài liệu và trình chọn SAF nhận thêm XLSX/PPTX. Hai loại dùng cùng cơ chế lưu trực tiếp URI nguồn, Save As và metadata như DOCX; cache giữ đúng phần mở rộng, không đổi thành DOCX. Bản phục hồi ghi lại định dạng để mở đúng editor sau khi khởi động lại. Xem [phạm vi editor](sheets-slides-android.md).

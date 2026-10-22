@@ -19,6 +19,7 @@ class EditorAssetServer {
     this.persistCopy,
     this.persistRecovery,
     this.pdf = false,
+    this.format = 'docx',
     AssetBundle? bundle,
   }) : _bundle = bundle ?? rootBundle;
   static const maxDocumentBytes = 20 * 1024 * 1024;
@@ -27,6 +28,7 @@ class EditorAssetServer {
   final PersistEditorExport? persistCopy;
   final PersistEditorRecovery? persistRecovery;
   final bool pdf;
+  final String format;
   final AssetBundle _bundle;
   HttpServer? _server;
   late Uri _base;
@@ -40,7 +42,9 @@ class EditorAssetServer {
   Stream<EditorSaveResult> get saved => _saved.stream;
   Uri get editorUri => pdf
       ? _base.resolve('pdf.html?file=documents/$_documentKey')
-      : _base.resolve('index.html?mobile=1');
+      : format == 'docx'
+      ? _base.resolve('index.html?mobile=1')
+      : _base.resolve('office.html?format=$format');
   Uri get baseUri => _base;
 
   Future<void> start() async {
@@ -59,9 +63,9 @@ class EditorAssetServer {
     // Native imports remain limited to 20 MB. A saved document can grow to
     // the export limit and must still be reopenable from the library.
     if (document.bytes.length > maxExportBytes) {
-      throw ArgumentError('DOCX vượt giới hạn 32 MB');
+      throw ArgumentError('Tài liệu vượt giới hạn 32 MB');
     }
-    if (!document.name.toLowerCase().endsWith(pdf ? '.pdf' : '.docx')) {
+    if (!document.name.toLowerCase().endsWith(pdf ? '.pdf' : '.$format')) {
       throw ArgumentError('Loại tài liệu không hợp lệ');
     }
     _document = document;
@@ -152,7 +156,7 @@ class EditorAssetServer {
               ? (persistCopy ?? persistExport)
               : persistExport;
           final result = await persist(
-            name.toLowerCase().endsWith('.docx') ? name : '$name.docx',
+            name.toLowerCase().endsWith('.$format') ? name : '$name.$format',
             bytes,
           );
           lastSave = result;
@@ -180,7 +184,11 @@ class EditorAssetServer {
             ? ContentType('application', 'pdf')
             : ContentType(
                 'application',
-                'vnd.openxmlformats-officedocument.wordprocessingml.document',
+                format == 'xlsx'
+                    ? 'vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    : format == 'pptx'
+                    ? 'vnd.openxmlformats-officedocument.presentationml.presentation'
+                    : 'vnd.openxmlformats-officedocument.wordprocessingml.document',
               );
         response.add(_document!.bytes);
         return;
