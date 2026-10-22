@@ -27,7 +27,7 @@ void main() {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
-      if (await condition()) return;
+      if (await tester.runAsync(condition) == true) return;
     }
     throw StateError('Office integration condition timed out');
   }
@@ -97,6 +97,8 @@ void main() {
               find.byKey(const Key('open-document')).evaluate().isNotEmpty,
         );
         await tester.tap(find.byKey(const Key('open-document')));
+        Future<void> execute(String script) =>
+            withFrames(tester, () => bridge!.controller.runJavaScript(script));
         Future<bool> js(String expression) async =>
             bridge != null &&
             await bridge!.controller.runJavaScriptReturningResult(expression) ==
@@ -106,11 +108,16 @@ void main() {
           () => js(
             format == DocumentFormat.xlsx
                 ? '!!window.genOfficeSheets?.getActiveWorkbook()'
-                : 'document.querySelectorAll("[data-paragraph]").length>0',
+                : 'document.querySelectorAll(".konvajs-content canvas").length>0',
           ),
         );
+        await until(
+          tester,
+          () async => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+        );
+        debugPrint('OFFICE QA: opened ${format.name}');
         if (format == DocumentFormat.xlsx) {
-          await bridge!.controller.runJavaScript(
+          await execute(
             'window.genOfficeSheets.getActiveWorkbook().getSheets()[0].getRange("B2").setValue(25)',
           );
           await until(
@@ -120,24 +127,68 @@ void main() {
             ),
           );
         } else {
+          await execute('''(async()=>{
+              const tree=(await window.slidesApi.getRenderSlides())[0];
+              const node=tree.nodes.find(n=>n.type==='text');
+              const content=[...document.querySelectorAll('.konvajs-content')].at(-1);
+              const box=content.getBoundingClientRect(),scale=box.width/(tree.widthPx+320);
+              const clientX=box.x+(node.box.x+160+node.box.w/2)*scale;
+              const clientY=box.y+(node.box.y+160+node.box.h/2)*scale;
+              for(let i=0;i<2;i++)for(const type of ['mousedown','mouseup'])content.dispatchEvent(new MouseEvent(type,{bubbles:true,clientX,clientY,button:0}));
+            })()''');
           await until(
             tester,
-            () => js('!!document.querySelector("#slide-canvas canvas")'),
+            () => js('!!document.querySelector(".slide-text-editor")'),
           );
-          await bridge!.controller.runJavaScript(
-            'const input=document.querySelectorAll("[data-paragraph]")[0];input.value="Báo cáo đã sửa tiếng Việt";input.dispatchEvent(new Event("input"));',
+          await execute(
+            '''const input=document.querySelector('.slide-text-editor');input.focus();input.innerText='Báo cáo đã sửa tiếng Việt';input.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText'}));input.blur();''',
+          );
+          await until(
+            tester,
+            () => js('!document.querySelector(".slide-text-editor")'),
           );
         }
         expect(
           await withFrames(tester, () => bridge!.hasUnsavedChanges()),
           true,
         );
+        debugPrint('OFFICE QA: edited ${format.name}');
         await withFrames(tester, () => bridge!.undo());
-        expect(
-          await withFrames(tester, () => bridge!.hasUnsavedChanges()),
-          false,
-        );
+        if (format == DocumentFormat.xlsx) {
+          await until(
+            tester,
+            () => js(
+              'window.genOfficeSheets.getActiveWorkbook().getSheets()[0].getRange("B2").getValue()===12',
+            ),
+          );
+        } else {
+          await execute(
+            'window.slidesApi.getRenderSlides().then(slides=>window.officeQaText=slides.flatMap(s=>s.nodes).filter(n=>n.type==="text").flatMap(n=>n.text.lines).flatMap(l=>l.runs).map(r=>r.text).join("").replace(/\\s+/g,""))',
+          );
+          await until(
+            tester,
+            () => js(
+              'typeof window.officeQaText==="string" && !window.officeQaText.includes("BáocáođãsửatiếngViệt")',
+            ),
+          );
+        }
         await withFrames(tester, () => bridge!.redo());
+        if (format == DocumentFormat.xlsx) {
+          await until(
+            tester,
+            () => js(
+              'window.genOfficeSheets.getActiveWorkbook().getSheets()[0].getRange("B2").getValue()===25',
+            ),
+          );
+        } else {
+          await execute(
+            'window.slidesApi.getRenderSlides().then(slides=>window.officeQaText=slides.flatMap(s=>s.nodes).filter(n=>n.type==="text").flatMap(n=>n.text.lines).flatMap(l=>l.runs).map(r=>r.text).join("").replace(/\\s+/g,""))',
+          );
+          await until(
+            tester,
+            () => js('window.officeQaText.includes("BáocáođãsửatiếngViệt")'),
+          );
+        }
         expect(
           await withFrames(tester, () => bridge!.hasUnsavedChanges()),
           true,
@@ -192,9 +243,22 @@ void main() {
           () => js(
             format == DocumentFormat.xlsx
                 ? 'window.genOfficeSheets?.getActiveWorkbook()?.getSheets()[0].getRange("B2").getValue()===25'
-                : 'document.querySelectorAll("[data-paragraph]")[0]?.value==="Báo cáo đã sửa tiếng Việt"',
+                : '!!document.querySelector(".konvajs-content canvas")',
           ),
         );
+        if (format == DocumentFormat.pptx) {
+          await until(
+            tester,
+            () async => find.byType(LinearProgressIndicator).evaluate().isEmpty,
+          );
+          await execute(
+            'window.slidesApi.getRenderSlides().then(slides=>window.officeQaText=slides.flatMap(s=>s.nodes).filter(n=>n.type==="text").flatMap(n=>n.text.lines).flatMap(l=>l.runs).map(r=>r.text).join("").replace(/\\s+/g,""))',
+          );
+          await until(
+            tester,
+            () => js('window.officeQaText.includes("BáocáođãsửatiếngViệt")'),
+          );
+        }
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
       },

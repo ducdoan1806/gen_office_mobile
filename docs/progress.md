@@ -71,8 +71,8 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [ ] Xử lý lỗi trên thiết bị mục tiêu và nghiệm thu.
 
 - [ ] **Bước 9. Mở rộng Sheets, Slides và iOS sau khi luồng DOCX ổn định**
-  - [x] Tích hợp Sheets/XLSX trên Android từ gateway/Univer GenOffice: mở, sửa ô/công thức, undo/redo, phục hồi, lưu và mở lại đã đạt trên Samsung Android 16. Công cụ nâng cao desktop chưa được tích hợp đầy đủ.
-  - [x] Tích hợp Slides/PPTX trên Android từ engine/ops/canvas GenOffice: mở, sửa văn bản, undo/redo, phục hồi, lưu và mở lại đã đạt trên Samsung Android 16. Công cụ nâng cao desktop chưa được tích hợp đầy đủ.
+  - [x] Tích hợp Sheets/XLSX trên Android bằng App/ribbon gốc GenOffice và gateway/Univer: mở, sửa ô/công thức, undo/redo, phục hồi, lưu và mở lại đã đạt trên Samsung Android 16. Công cụ nâng cao desktop chưa được tích hợp đầy đủ.
+  - [x] Tích hợp Slides/PPTX trên Android bằng App/ribbon/canvas gốc GenOffice và engine/ops: mở, sửa văn bản, undo/redo, phục hồi, lưu và mở lại đã đạt trên Samsung Android 16. Công cụ nâng cao desktop chưa được tích hợp đầy đủ.
   - [x] Cấu hình và sửa build iOS với Flutter 3.35.3 / Xcode 27, deployment target iOS 15.
   - [x] Build Debug và kiểm thử DOCX trên iPhone 18 Pro Simulator / iOS 27.
   - [x] Build iOS Release không ký (`--no-codesign`).
@@ -89,6 +89,8 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Công việc bổ sung đã làm
 
+- [x] 22/10/2026: thay giao diện PDF/Excel/PowerPoint rút gọn bằng nguyên App, ribbon và CSS của source GenOffice cùng commit với DOCX; thêm vuốt ngang công cụ trên điện thoại. Đã kiểm tra 9 ca WebView riêng biệt trên Samsung Android 16 (2 XLSX/PPTX, 3 PDF, 4 DOCX), 43 test Flutter, 8 test web và 3 bài trình duyệt: đạt. Xem [phạm vi port giao diện](sheets-slides-android.md).
+
 - [x] 22/10/2026: gộp nút mở DOCX/PDF thành **Mở tài liệu**; nhận diện DOCX/DOC/PDF từ cùng picker, kể cả nút thư mục trong editor.
 - [x] Tích hợp chuyển đổi DOC ↔ DOCX native offline trong process riêng; Lưu giữ định dạng DOC và URI nguồn, Save As xuất DOCX; giữ cờ/hash phục hồi và bản DOC lúc nhập trong kho riêng. Xem [DOC offline](legacy-doc.md).
 - [x] Kiểm thử mở/sửa/lưu/mở lại DOC khi tắt Wi-Fi và dữ liệu di động trên emulator; 39 unit/widget test, 3 integration PDF và 4 integration DOCX đạt. Runtime ARM64/x86_64 đã có script chuẩn bị kèm SHA-256; ARM64 đã đạt luồng DOC offline trên Samsung Android 16; Word thực tế chưa nghiệm thu.
@@ -102,7 +104,7 @@ Chi tiết phần Sheets/Slides và giới hạn hiện tại: [Android Sheets/S
 
 ## Điểm tiếp tục
 
-Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn.
+Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã chuyển PDF/XLSX/PPTX sang App/ribbon gốc GenOffice như DOCX, giữ giới hạn PDF chỉ đọc. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn.
 
 Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 

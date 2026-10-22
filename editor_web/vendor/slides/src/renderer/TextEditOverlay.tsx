@@ -818,8 +818,13 @@ export function TextEditOverlay({
       commitRef.current()
     }
     document.addEventListener('mousedown', onDown, true)
+    // GenOffice Mobile: Flutter controls can take native focus without a DOM
+    // blur. Flush the live overlay through the original commit handler.
+    const flushMobile = () => commitRef.current()
+    window.addEventListener('genoffice:flush-edit', flushMobile)
     return () => {
       document.removeEventListener('mousedown', onDown, true)
+      window.removeEventListener('genoffice:flush-edit', flushMobile)
       savedSel = null
     }
   }, [])

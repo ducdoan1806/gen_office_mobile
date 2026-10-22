@@ -52,3 +52,13 @@ Một ảnh chụp meminfo trong lần điều tra file lớn ghi nhận PSS ti�
 Cả hai định dạng đạt hai phase instrumentation riêng: prepare chọn fixture riêng bằng trình chọn Android thật, kiểm tra byte đọc và ghi đè; host force-stop ứng dụng; verify ở tiến trình mới kiểm tra grant persisted đọc/ghi, đọc lại byte đã sửa và ghi lại cùng URI. Mỗi phase báo OK (1 test), tổng 4 phase đạt. Các fixture UUID và grant của riêng bài test được xóa/thu hồi sau kiểm tra; không gỡ app hoặc xóa dữ liệu ứng dụng.
 
 Đã build APK debug thường với entrypoint lib/main.dart và cài lại bằng install -r. Các file runtime đã stage khớp đủ 343 SHA-256 trong manifest; .gitattributes giữ nguyên byte bundle khi clone trên máy khác. Các kiểm thử này không thay thế nghiệm thu thủ công hay xác nhận iOS.
+
+## Cập nhật giao diện gốc GenOffice — 22/10/2026
+
+PDF, Sheets và Slides hiện dùng nguyên App/ribbon/CSS của commit upstream đã ghim, thay cho màn hình rút gọn. Đã chạy 43 unit/widget test Flutter, 8 test web/engine, 3 bài Playwright production và Dart analyze: đạt. Đã kiểm tra bố cục 390×800 và vuốt thanh tab. Manifest 500 tài nguyên runtime được đối chiếu SHA-256 với blob đã stage trong Git.
+
+Hai điều chỉnh phát hiện khi kiểm thử mobile: chỉ báo PDF nhận đúng trang cuối khi các trang được fit nhỏ; PowerPoint chốt overlay văn bản qua callback gốc trước Save/recovery kể cả khi Flutter lấy native focus mà không phát DOM blur. Source renderer có thể giữ cờ chưa lưu sau Undo; bài kiểm thử undo/redo đối chiếu nội dung thực tế.
+
+Kết quả WebView trên Samsung SM-A075F/Android 16/ARM64 sau đổi giao diện: **9 ca riêng biệt đều đạt** — 2 XLSX/PPTX, 3 PDF và 4 DOCX hồi quy. Các ca XLSX/PPTX kiểm tra nội dung undo/redo, tạo bản phục hồi tự động, lưu nguồn qua provider mô phỏng, mở lại và giữ các phần ZIP không sửa. PDF kiểm tra chuyển thumbnail tới trang cuối, tìm cụm chữ, nhiều kết quả/không có kết quả, tô sáng, file hỏng và byte nguồn không đổi. Luồng PowerPoint còn kiểm tra chốt đoạn chữ khi DOM mất focus trước bản phục hồi. Ba ca PDF được chạy riêng sau khi sửa scope biến trong script nhập truy vấn của test harness.
+
+Đã build APK thường từ `lib/main.dart`, xác minh manifest editor trong APK trùng bản hiện tại và không chứa entrypoint integration. Không gỡ app/clear data trong quá trình cài đè.

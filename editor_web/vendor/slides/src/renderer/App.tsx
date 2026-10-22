@@ -3258,7 +3258,36 @@ export function App() {
       })
   })
 
-  return (
+   // GenOffice Mobile: stable command boundary; all actions run the original App handlers.
+  const mobileRef = useRef<any>(null);
+  mobileRef.current = async (command: any) => { switch (command.method) {
+      case 'open':
+          applyOpen(command.args.opened);
+          return;
+      case 'save':
+          if (!(await save()))
+              throw Error('Không lưu được PPTX.');
+          return;
+      case 'status': return { dirty: dirty || !!editing || !!editingCell || await window.slidesApi.isDirty() };
+      case 'snapshot':
+          await fileActions.flushActiveEdit(ctxRef.current);
+          await ctxRef.current.flushNotes();
+          if (!(await window.slidesApi.isDirty()))
+              return false;
+          return (await (window.slidesApi as any).writeMobileRecovery(command.args.documentId)).ok === true;
+      case 'undo':
+          await undo();
+          return;
+      case 'redo':
+          await redo();
+          return;
+      default: throw Error('Lệnh chưa hỗ trợ.');
+  } };
+  useEffect(() => { const win = window as any; const receive = (c: any) => mobileRef.current(c); win.genOfficeRenderer = receive; window.dispatchEvent(new CustomEvent('genoffice:ready')); return () => { if (win.genOfficeRenderer === receive)
+      delete win.genOfficeRenderer; }; }, []);
+
+
+return (
     <div className="app">
       <ToastHost />
       <Ribbon

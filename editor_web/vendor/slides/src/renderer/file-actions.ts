@@ -20,11 +20,17 @@ import { showToast } from './components/toast-bus'
  */
 export async function flushActiveEdit(ctx: ActionCtx): Promise<void> {
   const active = document.activeElement as HTMLElement | null
-  if (!active?.isContentEditable) return
-  active.blur()
+  if (document.documentElement.dataset.host === 'mobile' && ctx.editingActiveRef.current) {
+    window.dispatchEvent(new Event('genoffice:flush-edit'))
+  } else {
+    if (!active?.isContentEditable) return
+    active.blur()
+  }
   for (let i = 0; i < 40 && ctx.editingActiveRef.current; i++) {
     await new Promise((r) => setTimeout(r, 50))
   }
+  if (document.documentElement.dataset.host === 'mobile' && ctx.editingActiveRef.current)
+    throw new Error('Chưa hoàn tất chỉnh sửa văn bản. Hãy thử lưu lại.')
 }
 
 /**

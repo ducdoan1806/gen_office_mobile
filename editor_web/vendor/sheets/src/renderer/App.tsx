@@ -5033,7 +5033,42 @@ export function App({
 
   const aiScopeChip = resolveScopeChip(aiRunScope, aiScope, aiScopeDismissed)
 
-  return (
+  // GenOffice Mobile exposes the same Univer facade used by source commands.
+ ;(window as any).genOfficeSheets=univerRef.current?.univerAPI;
+  // GenOffice Mobile: stable command boundary; all actions run the original App handlers.
+  const mobileRef = useRef<any>(null);
+  mobileRef.current = async (command: any) => { switch (command.method) {
+      case 'open':
+          if (!(await openLazyWorkbook(command.args.file)))
+              throw Error('Không mở được XLSX.');
+          return;
+      case 'save': {
+          if (!(await commitActiveEditor()))
+              throw Error('Chưa hoàn tất nhập ô.');
+          if (lazyWorkbookRef.current && journalSize(lazyWorkbookRef.current.editJournal) === 0 && !lazyWorkbookRef.current.file.restoredFromRecovery) {
+              await (window.desktopApi as any).saveMobileUnchanged();
+              return;
+          }
+          const r = await handleSave('save');
+          if (!r.ok)
+              throw Error(r.error || 'Không lưu được XLSX.');
+          return;
+      }
+      case 'status': return { dirty: !!lazyWorkbookRef.current && (journalSize(lazyWorkbookRef.current.editJournal) > 0 || !!lazyWorkbookRef.current.file.restoredFromRecovery) || !!editingCellRef.current };
+      case 'snapshot': return (await (window as any).genOfficeSheetsRecovery(command.args.documentId, () => handleSave('recovery'))).ok === true;
+      case 'undo':
+          await univerRef.current?.univerAPI.undo();
+          return;
+      case 'redo':
+          await univerRef.current?.univerAPI.redo();
+          return;
+      default: throw Error('Lệnh chưa hỗ trợ.');
+  } };
+  useEffect(() => { const win = window as any; const receive = (c: any) => mobileRef.current(c); win.genOfficeRenderer = receive; window.dispatchEvent(new CustomEvent('genoffice:ready')); return () => { if (win.genOfficeRenderer === receive)
+      delete win.genOfficeRenderer; }; }, []);
+
+
+return (
     <>
       <ToastHost />
       {recoveryPrompt && (

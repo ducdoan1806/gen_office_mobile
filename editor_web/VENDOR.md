@@ -15,3 +15,15 @@ Integration changes to upstream source:
 Build aliases replace the AiPanel module with src/platform/disabled-ai-panel.tsx and select browser-only package exports. Source engine files remain unchanged. The browser host adapter and rich-main entrypoint are new integration code. The original desktop App is used; it is not replaced by a rewritten editor.
 
 Upstream LICENSE (Apache-2.0), NOTICE and LICENSE-UNICODE.txt are retained. Bundled font license files and embedded third-party headers remain in their source locations. tests/fixtures contains two upstream pagination corpus DOCX files from apps/docs/tests/pagination-corpus/docx.
+
+## Android full UI port — 2026-10-22
+
+Additional snapshots: `sheets/src`, `slides/src`, `pdf/src`, `xlsx-gateway/src`, `pptx-ops/src`, plus `pdf2docx/src/script.ts` for PDF Unicode classification, at the same pinned commit above. Only free renderer dependencies are bundled; no enterprise modules, Electron main/preload process or Rust sidecar runs on Android.
+
+- Sheets/Slides `renderer/App.tsx`: stable mobile command boundary calling original open/save/history handlers; expose existing Univer facade for host integration. `renderer/main.tsx`: import scoped mobile CSS.
+- PDF `renderer/App.tsx`: force Android read-only mode, label it accurately, report load/error through the existing Flutter channel. The readiness effect is unconditional before early returns. `renderer/main.tsx`: mobile CSS. `view-config.ts`: offline PDF resource base and Android render budget. `ocr-layer.tsx`: relocate Unicode helper import to the vendored location.
+- `src/upstream/sheets-save.ts` is extracted from original `sheets-main.ts::writeWorkbookTo`, returning the canonical gateway payload for browser serialization. Other browser host adapters are integration code.
+- AI panel imports resolve to the existing disabled panel module. Original UI source is otherwise retained; unsupported desktop service calls fail explicitly. PDF editing/OCR/export remain outside the Android scope.
+
+Mobile focus adaptation: Slides `file-actions.ts::flushActiveEdit` emits a mobile-only flush event and waits for the original overlay commit; `TextEditOverlay.tsx` handles it with its existing commit callback. This preserves pending text when Flutter controls take native focus without a DOM blur and prevents saving stale canvas content. The same path is used by manual Save and recovery snapshots.
+PDF mobile scroll tracking also recognizes the bottom scroll limit so a short, fitted last page can become the current page on narrow screens.

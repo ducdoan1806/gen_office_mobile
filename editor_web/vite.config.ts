@@ -7,7 +7,10 @@ const browserGuard = () => ({name:'reject-desktop-runtime',enforce:'pre' as cons
 }});
 export default defineConfig({
  base:'./', plugins:[react(),browserGuard()],
- resolve:{alias:[
+ resolve:{alias:[{find:/^@genoffice\/(pptx-engine|pptx-render|pptx-ops|docx-engine|electron-utils|agent-core|ai-provider|project-store|font-metrics)\/(.*)$/,replacement:path('./vendor/$1/src/$2')},
+{find:/^.*\/ai\/AiChatPanel$/,replacement:path('./src/platform/disabled-ai-panel.tsx')},
+{find:/^@genoffice\/ui\/(.*)$/,replacement:path('./vendor/ui/src/$1')},
+
 {find:'node:crypto',replacement:path('./src/platform/node/crypto.ts')},
 {find:'node:fs/promises',replacement:path('./src/platform/node/fs.ts')},
 {find:'node:fs',replacement:path('./src/platform/node/fs.ts')},

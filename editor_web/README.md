@@ -28,7 +28,7 @@ End-to-end tests use locally installed macOS Chrome by default. Set CHROME_PATH 
 - `vendor/docx-engine`: upstream OOXML parser and patch writer.
 - `vite.config.ts`: package entrypoint mappings and a Node/Electron rejection guard for both main and worker bundles.
 - `prototype.html`: keeps the earlier minimal paragraph prototype separately; this is no longer the default editor.
-- `pdf.html` / `src/pdf`: separate read-only PDF.js viewer for the Android host, with full-document search, highlights, page navigation and zoom. Worker/fonts/CMaps/WASM are packaged by `tool/bundle_editor.mjs`; see [PDF viewer](../docs/pdf-viewer.md).
+- `pdf.html` / `src/upstream/pdf.ts`: original GenOffice PDF App in read-only mode for the Android host, with full-document search, highlights, page navigation and zoom. Worker/fonts/CMaps/WASM are packaged by `tool/bundle_editor.mjs`; see [PDF viewer](../docs/pdf-viewer.md).
 
 ## Browser capabilities and limits
 
@@ -49,3 +49,9 @@ See VENDOR.md for source revision, licenses and integration patches. `.npmrc` se
 ## Flutter integration
 
 The mobile host in src/platform/mobile-host.ts is activated by `?mobile=1`. `node ../tool/bundle_editor.mjs` from this directory builds and packages the runtime into Flutter assets. See ../docs/mobile-webview.md for the bridge and native platform configuration. The regular browser page retains its standalone behavior.
+
+## Original Sheets / Slides / PDF renderer port (Android)
+
+The original App, React main entrypoint and CSS for `vendor/{sheets,slides,pdf}/src/renderer` are now loaded directly, as for Docs. The former simplified `src/office` and `src/pdf` screens have been removed. `src/upstream/*-host.ts` adapts desktop API contracts to the Flutter loopback server; no Electron IPC or filesystem is exposed. The Sheets save payload is extracted from upstream `writeWorkbookTo`; original gateway planners write XLSX. Slides routes UI operations through the upstream transaction engine. PDF remains forced read-only.
+
+Mobile CSS only adapts overflow/touch sizing and hides deferred AI controls. Source renderer hooks expose the existing open/save/history handlers to Flutter. Browser verification: `CHROME_PATH=... npx playwright test --config playwright.upstream.config.ts` after building and running `node ../tool/bundle_editor.mjs --no-build` (the latter adds offline PDF resources). See [Android port scope](../docs/sheets-slides-android.md) for remaining desktop service gaps.

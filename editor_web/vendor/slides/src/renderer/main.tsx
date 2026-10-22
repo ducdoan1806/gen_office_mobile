@@ -1,3 +1,4 @@
+// GenOffice Mobile: retain original renderer; add scoped touch/overflow styles.
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { htmlDir, htmlLang, type Lang } from '@genoffice/i18n'
@@ -17,6 +18,8 @@ import '@genoffice/ui/markdown.css'
 import '@genoffice/ui/ai-panel-prefs.css'
 import '@genoffice/ui/ai-scope-quote.css'
 import './styles.css'
+// GenOffice Mobile: preserve the source ribbon with touch scrolling.
+import '../../../../src/upstream/mobile.css'
 import { applyAiPanelPrefs, installScreenTips } from '@genoffice/ui'
 
 installScreenTips()
