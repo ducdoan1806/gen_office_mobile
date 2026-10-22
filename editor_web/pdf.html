@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+<title>Đọc PDF</title></head><body>
+<header>
+  <div class="row"><button id="previous" aria-label="Trang trước">‹</button><label>Trang <input id="page" type="number" min="1" value="1" inputmode="numeric" aria-label="Số trang"></label><span id="total">/ …</span><button id="next" aria-label="Trang sau">›</button><button id="zoomOut" aria-label="Thu nhỏ">−</button><button id="zoomIn" aria-label="Phóng to">+</button><button id="fit">Vừa trang</button></div>
+  <form id="searchForm" class="row"><input id="query" type="search" placeholder="Tìm trong PDF" aria-label="Tìm trong PDF" maxlength="500"><button type="submit">Tìm</button><button id="findPrevious" type="button" aria-label="Kết quả trước">↑</button><button id="findNext" type="button" aria-label="Kết quả sau">↓</button></form>
+  <div id="status" role="status" aria-live="polite">Đang mở PDF…</div>
+</header>
+<div id="viewerContainer" tabindex="0"><div id="viewer" class="pdfViewer"></div></div>
+<script type="module" src="/src/pdf/main.ts"></script>
+</body></html>

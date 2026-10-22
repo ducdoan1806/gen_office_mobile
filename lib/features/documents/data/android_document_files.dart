@@ -13,12 +13,18 @@ class AndroidDocumentFiles {
   const AndroidDocumentFiles();
   static const channel = MethodChannel('genoffice/document_files');
 
-  Future<SourceDocxFile?> pick({String? createName, String? initialUri}) async {
+  Future<SourceDocxFile?> pick({
+    String? createName,
+    String? initialUri,
+    bool pdf = false,
+    bool allDocuments = false,
+  }) async {
     final result = await channel.invokeMapMethod<String, dynamic>(
       createName == null ? 'open' : 'create',
       {
         if (createName != null) 'name': createName,
         if (initialUri != null) 'initialUri': initialUri,
+        if (allDocuments) 'format': 'all' else if (pdf) 'format': 'pdf',
       },
     );
     if (result == null) return null;

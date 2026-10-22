@@ -4,7 +4,8 @@ import '../../../app/dependencies.dart';
 import '../../editor/presentation/document_editor_page.dart';
 import '../../editor/presentation/mobile_docx_editor_page.dart';
 import '../domain/office_document.dart';
-import '../data/docx_file_picker.dart';
+import '../data/document_file_picker.dart';
+import '../../pdf/presentation/pdf_viewer_page.dart';
 import '../data/android_document_files.dart';
 import '../../editor/data/document_recovery_store.dart';
 import '../../editor/presentation/recovery_documents.dart';
@@ -15,7 +16,7 @@ class DocumentLibraryPage extends StatefulWidget {
   const DocumentLibraryPage({
     super.key,
     required this.dependencies,
-    this.pickDocument = pickDocxFile,
+    this.pickDocument = pickOfficeFile,
     this.recoveryStore,
     this.onBridgeCreated,
   });
@@ -48,7 +49,9 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => document.format == DocumentFormat.docx
+        builder: (_) => document.format == DocumentFormat.pdf
+            ? PdfViewerPage(document: document)
+            : document.format == DocumentFormat.docx
             ? MobileDocxEditorPage(
                 document: document,
                 recoveryStore: _recovery,
@@ -71,22 +74,37 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     try {
       final file = await widget.pickDocument();
       if (file == null) return;
-      if (await file.length() > LocalDocumentRepository.maxImportBytes) {
-        throw StateError('DOCX vượt giới hạn 20 MB.');
+      final name = file.name.toLowerCase();
+      final pdf = name.endsWith('.pdf');
+      final legacyDoc = name.endsWith('.doc');
+      if (!pdf && !legacyDoc && !name.endsWith('.docx')) {
+        throw StateError('Định dạng file chưa được hỗ trợ.');
       }
-      final document = await widget.dependencies.documents.storeDocx(
-        file.name,
-        await file.readAsBytes(),
-        sourceUri: file is SourceDocxFile ? file.sourceUri : null,
-      );
+      if (await file.length() > LocalDocumentRepository.maxImportBytes) {
+        throw StateError('Tài liệu vượt giới hạn 20 MB.');
+      }
+      final bytes = await file.readAsBytes();
+      final uri = file is SourceDocxFile ? file.sourceUri : null;
+      final document = pdf
+          ? await widget.dependencies.documents.storePdf(
+              file.name,
+              bytes,
+              sourceUri: uri,
+            )
+          : await widget.dependencies.documents.storeDocx(
+              file.name,
+              bytes,
+              sourceUri: uri,
+              legacyDoc: legacyDoc,
+            );
       if (!mounted) return;
       _reload();
       await _open(document);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không mở được DOCX: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không mở được tài liệu: $error')),
+        );
       }
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -106,8 +124,8 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       ],
     ),
     floatingActionButton: FloatingActionButton.extended(
-      key: const Key('import-docx'),
-      onPressed: _importing ? null : _import,
+      key: const Key('open-document'),
+      onPressed: _importing ? null : () => _import(),
       icon: _importing
           ? const SizedBox(
               width: 20,
@@ -115,7 +133,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               child: CircularProgressIndicator(),
             )
           : const Icon(Icons.add),
-      label: const Text('Mở DOCX'),
+      label: const Text('Mở tài liệu'),
     ),
     body: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,7 +180,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               final documents = snapshot.data!;
               if (documents.isEmpty) {
                 return const Center(
-                  child: Text('Chưa có tài liệu. Nhấn “Mở DOCX” để thêm.'),
+                  child: Text('Chưa có tài liệu. Nhấn “Mở tài liệu” để thêm.'),
                 );
               }
               return ListView.builder(
@@ -171,11 +189,17 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                 itemBuilder: (context, index) {
                   final document = documents[index];
                   return ListTile(
-                    leading: const Icon(Icons.description_outlined),
+                    leading: Icon(
+                      document.format == DocumentFormat.pdf
+                          ? Icons.picture_as_pdf_outlined
+                          : Icons.description_outlined,
+                    ),
                     title: Text(document.name),
                     subtitle: Text(
                       [
-                        document.format.name.toUpperCase(),
+                        document.legacyDoc
+                            ? 'DOC'
+                            : document.format.name.toUpperCase(),
                         document.sourceUri != null
                             ? 'File gốc'
                             : 'Bản trong app',

@@ -1,6 +1,6 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 21/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 22/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
@@ -11,7 +11,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 ## Các mục tạm hoãn theo yêu cầu
 
 - **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
-- **Nghiệm thu DOCX trên điện thoại thật và đối chiếu Microsoft Word:** tiếp tục tạm hoãn các mục tương ứng ở bước 2, 4, 8 và mốc DOCX đầu tiên. Các mục này vẫn để chưa hoàn thành.
+- **Điện thoại Android thật:** chủ dự án đã mở lại kiểm thử ngày 22/10/2026. Đã kiểm thử tự động trên Samsung SM-A075F/Android 16/ARM64; nghiệm thu bàn phím/cảm ứng và đối chiếu Microsoft Word vẫn chưa hoàn thành. Xem [kết quả máy thật](android-device-qa.md).
 - **iOS:** tạm hoãn toàn bộ công việc còn lại ở bước 9 và việc kiểm thử lại các tính năng mới trên iOS. Các dấu hoàn thành cũ được giữ như lịch sử kết quả đã làm.
 - **AI:** tiếp tục tạm hoãn như đã thống nhất.
 
@@ -32,7 +32,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 - [x] **Bước 3. Thêm chọn và mở file DOCX thật**
   - [x] Chọn DOCX bằng file picker native và mở trong editor.
   - [x] Android giữ liên kết và quyền đọc/ghi file gốc; kho riêng giữ cache và metadata.
-  - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút Mở DOCX.
+  - [x] Lưu metadata và hiển thị lại tài liệu sau khi khởi động app; thay danh sách mẫu bằng thư viện thật, có nút Mở tài liệu.
   - Yêu cầu đã chỉnh lại: Android **Lưu ghi đè chính file nguồn đã mở** bằng SAF; đọc lại từ nguồn khi mở gần đây. Bản cũ trong app cần chọn lại file gốc. **Lưu thành bản mới** chọn nơi lưu qua Android. Xem [kho tài liệu](document-library.md).
 
 - [ ] **Bước 4. Hoàn thiện chỉnh sửa cơ bản**
@@ -55,12 +55,17 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Tạo bản tạm DOCX mỗi 5 giây và khi chuyển nền; khôi phục qua màn hình chính, giữ dirty cho đến khi Lưu vào nguồn.
   - [x] Kiểm thử phục hồi mất tiến trình bằng force-stop Android rồi chạy tiến trình mới; kiểm tra nguồn thay đổi, lỗi/hủy Lưu và dọn bản tạm sau Lưu thành công. Đây là mô phỏng crash/thu hồi app trên emulator, chưa ép crash native/LMK thật. Xem [khôi phục phiên](session-recovery.md).
 
-- [ ] **Bước 7. Tích hợp PDF viewer**
-  - [ ] Mở và hiển thị PDF thật.
-  - [ ] Tìm kiếm và điều hướng trang.
+- [x] **Bước 7. Tích hợp PDF viewer trên Android**
+  - [x] Mở tài liệu thật qua SAF với quyền đọc; lưu danh sách gần đây và đọc lại từ nguồn khi mở.
+  - [x] Hiển thị offline bằng PDF.js; cuộn, phóng to/thu nhỏ và vừa chiều rộng trang.
+  - [x] Tìm chữ toàn tài liệu, tô sáng, đếm và chuyển kết quả; trang trước/sau và nhập số trang.
+  - [x] Kiểm thử WebView Android với PDF 3 trang có chữ/hình, tìm kiếm/chuyển trang và báo lỗi file hỏng; 36 unit/widget test đạt. Xem [PDF viewer](pdf-viewer.md).
+  - [x] Kiểm thử SAF native với PDF trong Downloads: giữ quyền đọc, chặn ghi, thu hồi quyền và giữ nguyên file nguồn; 4 bài DOCX WebView hồi quy đạt.
+  - Giới hạn 20 MB, chỉ đọc; chưa OCR, chưa hỗ trợ PDF có mật khẩu. Đã kiểm thử tự động cơ bản trên Samsung Android 16; thao tác cảm ứng bằng tay chưa nghiệm thu. iOS vẫn hoãn.
 
 - [ ] **Bước 8. Kiểm thử trên Android thực tế**
   - [x] Build APK và kiểm thử DOCX trên emulator.
+  - [x] Kiểm thử tự động trên Samsung Android 16/ARM64: DOC offline, 4 ca DOCX, 3 ca PDF và khôi phục qua force-stop. 5 DOCX mẫu đạt; file lớn 10,9 MB mở/sửa/lưu nguồn/mở lại đạt trên app thường (bài integration lớn chưa hoàn tất). SAF native và quyền DOC qua hai tiến trình đạt. Xem [máy thật](android-device-qa.md).
   - [ ] Kiểm thử điện thoại thật: file lớn, bàn phím tiếng Việt, bộ nhớ và chuyển nền.
   - [ ] Xử lý lỗi trên thiết bị mục tiêu và nghiệm thu.
 
@@ -83,6 +88,10 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Công việc bổ sung đã làm
 
+- [x] 22/10/2026: gộp nút mở DOCX/PDF thành **Mở tài liệu**; nhận diện DOCX/DOC/PDF từ cùng picker, kể cả nút thư mục trong editor.
+- [x] Tích hợp chuyển đổi DOC ↔ DOCX native offline trong process riêng; Lưu giữ định dạng DOC và URI nguồn, Save As xuất DOCX; giữ cờ/hash phục hồi và bản DOC lúc nhập trong kho riêng. Xem [DOC offline](legacy-doc.md).
+- [x] Kiểm thử mở/sửa/lưu/mở lại DOC khi tắt Wi-Fi và dữ liệu di động trên emulator; 39 unit/widget test, 3 integration PDF và 4 integration DOCX đạt. Runtime ARM64/x86_64 đã có script chuẩn bị kèm SHA-256; ARM64 đã đạt luồng DOC offline trên Samsung Android 16; Word thực tế chưa nghiệm thu.
+
 - [x] Tạo cấu trúc dự án Flutter.
 - [x] Đưa source lên GitHub, thêm `.gitignore` và README hướng dẫn clone/cài/chạy/build.
 - [x] Thiết lập nhánh `dev`; chỉ đưa lên nhánh chính khi chủ dự án chấp thuận.
@@ -90,8 +99,8 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Bước 6 đã hoàn thành trong luồng DOCX hiện tại trên Android emulator: bản tạm, khôi phục ở tiến trình mới, xử lý lỗi lưu và dọn bản tạm. Khi tiếp tục phát triển, ưu tiên **bước 7** (PDF viewer trên Android), rồi các mục XLSX/PPTX của **bước 9** trên Android. Phần iOS tiếp tục tạm hoãn.
+Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Khi chủ dự án yêu cầu tiếp tục, còn nghiệm thu bàn phím/cảm ứng, điều tra bài integration file lớn và các mục XLSX/PPTX của **bước 9** trên Android. Phần iOS tiếp tục tạm hoãn.
 
-Chưa tiếp tục bước 5, các mục nghiệm thu điện thoại thật/Word đang hoãn hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
+Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
-Đây là tổng hợp kết quả kiểm thử đã ghi nhận, không phải lần chạy lại test. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md) và [build iOS](ios-build.md).
+Đây là tổng hợp kết quả kiểm thử đã ghi nhận; phạm vi và ngày kiểm chứng được ghi trong tài liệu từng tính năng. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md), [PDF viewer](pdf-viewer.md) và [build iOS](ios-build.md).

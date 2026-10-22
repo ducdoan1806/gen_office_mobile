@@ -4,17 +4,19 @@ Yêu cầu hiện tại: mở file trong thư mục trên điện thoại, sửa
 
 ## Hành vi
 
-- **Mở DOCX** dùng ACTION_OPEN_DOCUMENT; app giữ content URI và quyền đọc/ghi lâu dài do người dùng cấp qua trình chọn tệp Android.
+- Một nút **Mở tài liệu** dùng ACTION_OPEN_DOCUMENT cho DOCX/DOC/PDF. DOCX/DOC giữ quyền đọc/ghi, PDF chỉ giữ quyền đọc. Nhận diện theo tên file không phân biệt hoa/thường; parser/bộ chuyển đổi kiểm tra dữ liệu trước khi hiển thị.
 - **Lưu** ghi nội dung đã serialize vào URI gốc bằng ContentResolver, đóng stream rồi đọc lại xác minh toàn bộ byte. Chỉ sau đó mới cập nhật cache/metadata và báo thành công. Lưu lặp lại giữ một mục gần đây.
 - Mở từ danh sách gần đây đọc nội dung hiện tại từ nguồn, kể cả khi file đã được sửa bằng app khác. Chọn lại cùng URI không thêm mục mới; hai file trùng tên có URI khác nhau vẫn riêng biệt.
-- Mất quyền, file bị xóa/di chuyển hoặc lỗi ghi: báo lỗi, không báo thành công bằng cách chỉ lưu cache; editor giữ thay đổi chưa lưu. Người dùng có thể mở lại nguồn bằng **Mở DOCX**. Ghi trực tiếp qua provider không có bảo đảm giao dịch/khôi phục nguyên tử khi thiết bị hoặc provider lỗi giữa chừng; cache nội dung trước đó vẫn được giữ.
+- Mất quyền, file bị xóa/di chuyển hoặc lỗi ghi: báo lỗi, không báo thành công bằng cách chỉ lưu cache; editor giữ thay đổi chưa lưu. Người dùng có thể mở lại nguồn bằng **Mở tài liệu**. Ghi trực tiếp qua provider không có bảo đảm giao dịch/khôi phục nguyên tử khi thiết bị hoặc provider lỗi giữa chừng; cache nội dung trước đó vẫn được giữ.
 - **Lưu thành bản mới** dùng ACTION_CREATE_DOCUMENT để chọn đích; Lưu tiếp theo cập nhật file mới đó. Hủy trình chọn đích không xác nhận đã lưu.
-- Các tài liệu cũ chỉ có bản sao riêng chưa biết file nguồn. Lần Lưu đầu yêu cầu chọn file gốc để ghi thay đổi vào; không tự tìm theo tên. Cách đơn giản để bắt đầu lại: **Mở DOCX** và chọn đúng nguồn.
+- Các tài liệu cũ chỉ có bản sao riêng chưa biết file nguồn. Lần Lưu đầu yêu cầu chọn file gốc để ghi thay đổi vào; không tự tìm theo tên. Cách đơn giản để bắt đầu lại: **Mở tài liệu** và chọn đúng nguồn.
 - Android không cần quyền truy cập toàn bộ bộ nhớ. Nếu gỡ app/xóa dữ liệu thì mất danh sách và quyền đã giữ, file nguồn ngoài app vẫn tồn tại. iOS/macOS chưa chuyển sang ghi file nguồn, vẫn dùng bản sao riêng.
 
 ## Cache và metadata
 
 Kho riêng vẫn nằm trong Documents/GenOffice/documents hoặc exports. Metadata phiên bản 1 bổ sung trường tùy chọn sourceUri bên cạnh ID, name, createdAt, updatedAt, sizeBytes và contentFile. Đường dẫn cache là tương đối để tương thích container iOS. sourceUri là liên kết Android, không phải đường dẫn tùy ý do renderer cung cấp.
+
+DOC có thêm `legacyDoc` và `sourceHash`: cache/bản tạm là DOCX dùng nội bộ, tên và URI vẫn là DOC gốc. Lưu chuyển về DOC nhị phân trước khi ghi URI nguồn; giữ bản nhị phân lúc nhập ở `original-source.doc` trong kho riêng. Xem [DOC offline](legacy-doc.md).
 
 Cache được ghi thành revision mới, metadata được thay sau khi nguồn ghi thành công. Giữ nội dung hiện tại và revision trước đó; không tạo dòng gần đây cho revision. Nếu ghi nguồn lỗi, bỏ revision đang staging và giữ metadata đã commit. Tài liệu cũ thiếu sourceUri vẫn đọc được. Giới hạn chọn ban đầu 20 MB; kết quả lưu/mở lại 32 MB.
 

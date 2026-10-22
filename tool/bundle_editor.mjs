@@ -10,6 +10,9 @@ if(!process.argv.includes('--no-build')) {
  if(result.status!==0)process.exit(result.status??1);
 }
 const destination=join(root,'assets/editor');mkdirSync(destination,{recursive:true});
+// Keep the PDF reader fully offline, including CJK maps and fallback fonts.
+for(const name of ['cmaps','standard_fonts','wasm','iccs'])cpSync(join(editor,'node_modules/pdfjs-dist',name),join(editor,'dist/pdf',name),{recursive:true});
+cpSync(join(editor,'node_modules/pdfjs-dist/LICENSE'),join(editor,'dist/pdf/LICENSE'));
 // Vite can retain mixed CRLF/LF from HTML inputs on Windows. Keep packaged
 // entrypoints and their manifest hashes deterministic across host platforms.
 for(const name of readdirSync(join(editor,'dist')).filter(name=>name.endsWith('.html'))) {

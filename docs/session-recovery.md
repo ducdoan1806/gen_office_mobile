@@ -46,3 +46,7 @@ flutter test integration_test/recovery_process_test.dart -d emulator-5554 --dart
 ```
 
 Restore phải đạt và tự dọn thư mục fixture riêng. Bài này được bỏ qua khi không truyền phase để không làm hỏng lượt chạy integration thông thường. Sau khi kiểm thử, chạy `flutter run -d emulator-5554` để mở lại app bình thường.
+
+## Bổ sung 22/10/2026 — điện thoại thật
+
+Luồng hai tiến trình prepare → host force-stop → restore đã đạt trên Samsung SM-A075F/Android 16/ARM64, gồm xử lý xung đột nguồn, hủy/lỗi Lưu và dọn bản tạm sau Lưu thành công. Xem [kết quả máy thật](android-device-qa.md). Không thay thế kiểm thử LMK/crash native hoặc bàn phím/cảm ứng.

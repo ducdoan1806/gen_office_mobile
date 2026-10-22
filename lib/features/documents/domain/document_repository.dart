@@ -3,6 +3,11 @@ import 'office_document.dart';
 
 abstract interface class DocumentRepository {
   Future<List<OfficeDocument>> list();
+  Future<OfficeDocument> storePdf(
+    String name,
+    Uint8List bytes, {
+    String? sourceUri,
+  });
   Future<OfficeDocument> updateDocx(
     String id,
     Uint8List bytes, {
@@ -12,6 +17,7 @@ abstract interface class DocumentRepository {
     String name,
     Uint8List bytes, {
     bool isExport = false,
+    bool legacyDoc = false,
     String? sourceUri,
   });
 }

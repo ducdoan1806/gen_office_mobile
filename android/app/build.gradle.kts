@@ -9,6 +9,11 @@ android {
     namespace = "com.example.gen_office_mobile"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    sourceSets.getByName("main") {
+        jniLibs.srcDir("../office-runtime/jniLibs")
+        assets.srcDir("../office-runtime/assets")
+    }
+    packaging.jniLibs.useLegacyPackaging = true
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -33,6 +38,7 @@ android {
 
     buildTypes {
         release {
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
@@ -43,6 +49,17 @@ android {
 flutter {
     source = "../.."
 }
+
+val checkOfficeRuntime by tasks.registering {
+    doLast {
+        check(file("../office-runtime/assets/program/bootstraprc").isFile &&
+            file("../office-runtime/jniLibs/arm64-v8a/liblo-native-code.so").isFile &&
+            file("../office-runtime/jniLibs/x86_64/liblo-native-code.so").isFile) {
+            "Prepare offline DOC runtime first: powershell -ExecutionPolicy Bypass -File tool/setup_office_runtime.ps1 (from project root)."
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(checkOfficeRuntime) }
 
 
 dependencies {

@@ -9,7 +9,7 @@ void main() {
   ) async {
     await tester.pumpWidget(GenOfficeApp(dependencies: AppDependencies.mock()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hướng dẫn an toàn.pdf'));
+    await tester.tap(find.text('Kế hoạch sản xuất.xlsx'));
     await tester.pumpAndSettle();
     expect(find.text('Vùng editor Office'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'Tóm tắt');
