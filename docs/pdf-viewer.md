@@ -26,3 +26,7 @@ Kiểm thử native `PdfDocumentTest` qua Downloads thật đạt: giữ quyền
 - `PdfDocumentTest` (Android instrumentation): trình chọn Downloads thật, quyền đọc được lưu bền, đọc lại, từ chối ghi và từ chối đọc khi bị thu hồi quyền. Chỉ dùng fixture riêng, không sửa tài liệu người dùng.
 
 Chạy kiểm thử native bằng `assembleDebugAndroidTest`, cài APK bằng `adb install -r`, sau đó chạy class `com.example.gen_office_mobile.PdfDocumentTest` qua `am instrument`. Không dùng `connectedDebugAndroidTest` trên bản app đang giữ dữ liệu người dùng vì runner có thể gỡ app.
+
+## Bổ sung 22/10/2026 — Samsung Android thật
+
+3 bài WebView PDF và bài SAF chỉ đọc/thu hồi quyền đã đạt trên Samsung SM-A075F/Android 16/ARM64. Xem [kết quả máy thật](android-device-qa.md).

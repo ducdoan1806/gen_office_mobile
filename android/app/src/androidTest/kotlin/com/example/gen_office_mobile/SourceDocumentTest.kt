@@ -57,17 +57,17 @@ class SourceDocumentTest {
             val selected = call(activity, "open", mapOf("format" to "all", "initialUri" to initial.toString()))
             var file = device.wait(Until.findObject(By.text(filename)), 3000)
             if (file == null) {
-                val roots = device.findObject(UiSelector().description("Show roots"))
+                val roots = device.findObject(UiSelector().descriptionMatches("Show roots|Hiển thị gốc"))
                 if (roots.waitForExists(5000)) {
                     roots.click()
-                    val downloads = device.findObject(UiSelector().text("Downloads"))
+                    val downloads = device.findObject(UiSelector().textMatches("Downloads|Download|Tải xuống"))
                     check(downloads.waitForExists(10000)) { "Downloads root missing" }
                     downloads.click()
                 }
                 file = device.wait(Until.findObject(By.text(filename)), 5000)
             }
             if (file == null) {
-                val search = device.wait(Until.findObject(By.desc("Search")), 10000)
+                val search = device.wait(Until.findObject(By.desc(Pattern.compile("Search|Tìm kiếm"))), 10000)
                 assertNotNull("Search in picker", search)
                 requireNotNull(search).click()
                 val input = device.wait(Until.findObject(By.res(Pattern.compile(".*:id/search_src_text"))), 10000)

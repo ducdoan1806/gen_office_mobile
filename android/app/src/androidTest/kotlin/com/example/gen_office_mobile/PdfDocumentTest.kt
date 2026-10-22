@@ -51,7 +51,7 @@ class PdfDocumentTest {
             val reply = call("open", mapOf("format" to "all", "initialUri" to initial.toString()))
             var file = device.wait(Until.findObject(By.text(filename)), 10000)
             if (file == null) {
-                requireNotNull(device.wait(Until.findObject(By.desc("Search")), 10000)).click()
+                requireNotNull(device.wait(Until.findObject(By.desc(Pattern.compile("Search|Tìm kiếm"))), 10000)).click()
                 requireNotNull(device.wait(Until.findObject(By.res(Pattern.compile(".*:id/search_src_text"))), 10000)).text = filename
                 val search = device.wait(Until.findObject(By.pkg("com.google.android.inputmethod.latin").desc("Search")), 5000)
                 if (search != null) search.click() else device.pressEnter()

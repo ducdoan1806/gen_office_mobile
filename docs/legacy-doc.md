@@ -15,7 +15,7 @@ Lỗi chuyển đổi xảy ra trước ghi nguồn; giữ cache/bản tạm và
 - LibreOfficeKit 26.2.6.3 native từ các APK F-Droid đã chốt SHA-256; không gọi Word/WPS hoặc server.
 - Service `:doc_converter` riêng, không export. Binder chỉ chuyển ID công việc; byte lớn đi qua cache riêng, tránh giới hạn giao dịch Binder.
 - Một hàng đợi native; giới hạn input/output 32 MB, timeout 180 giây. Khi timeout chỉ dừng process converter. Chọn file ban đầu vẫn giới hạn 20 MB.
-- Đang đóng gói ARM64 và x86_64; app DOCX/PDF vẫn dùng nền tảng hiện có. DOC trên CPU 32-bit được báo chưa hỗ trợ. ARM64 chưa chạy nghiệm thu trên máy thật.
+- Đang đóng gói ARM64 và x86_64; app DOCX/PDF vẫn dùng nền tảng hiện có. DOC trên CPU 32-bit được báo chưa hỗ trợ. ARM64 đã chạy kiểm thử tự động offline trên Samsung SM-A075F/Android 16; chưa nghiệm thu thủ công đầy đủ.
 - Runtime/font/config đóng gói trong APK nên chạy offline. Đổi lại APK và dữ liệu app lớn hơn đáng kể. Chuẩn bị trên máy build một lần: `powershell -ExecutionPolicy Bypass -File tool/setup_office_runtime.ps1`. PowerShell 7 có thể dùng `pwsh -File ...`.
 - `android/office-runtime/` là build dependency đã gitignore; không commit các `.so` cỡ lớn. Không cần tải runtime từ điện thoại. Native bindings, bản sửa Context và thông tin source/license được giữ trong `android/app/src/main/java/org/libreoffice/kit/`; thông báo license nằm trong assets Android.
 
@@ -27,4 +27,7 @@ Lỗi chuyển đổi xảy ra trước ghi nguồn; giữ cache/bản tạm và
 - Lặp lại cùng luồng khi tắt cả Wi-Fi và dữ liệu di động đạt; đã khôi phục trạng thái kết nối sau test. Không cần máy chủ chuyển đổi.
 - Fixture chuẩn có tiếng Việt, bảng 2×2 và header: `assets/samples/legacy-conversion.docx`. Fixture tối giản `factory-demo.docx` có cấu trúc bảng thiếu thuộc tính mà LibreOffice chuẩn hóa thành đoạn, nên không dùng để khẳng định giữ bảng DOC.
 - Native instrumentation: chuyển DOC ↔ DOCX giữ chữ tiếng Việt/bảng, picker hỗn hợp ghi đè DOCX và PDF chỉ đọc đều đạt trên emulator.
-- Chưa nghiệm thu bộ DOC thực tế của nhà máy, điện thoại ARM64 hoặc đối chiếu Microsoft Word; iOS tiếp tục hoãn.
+- Luồng DOC offline trên ARM64 đã đạt kiểm thử tự động ngày 22/10/2026; chưa nghiệm thu bộ DOC thực tế của nhà máy hoặc đối chiếu Microsoft Word; iOS tiếp tục hoãn.
+
+
+Xem [kiểm thử Samsung Android thật](android-device-qa.md) để phân biệt kết quả tự động, quyền nguồn thật và các giới hạn còn lại.

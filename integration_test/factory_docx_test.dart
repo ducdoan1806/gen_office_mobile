@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -100,6 +101,7 @@ void main() {
           );
         }
         expect(ready.isCompleted, true, reason: 'Open corpus document $name');
+        debugPrint('CORPUS OPEN: $name');
         final passed = await tester.runAsync(() async {
           final unchanged = await bridge.save();
           final unchangedZip = ZipDecoder().decodeBytes(
@@ -109,11 +111,16 @@ void main() {
             (entry) => entry.isFile,
           )) {
             expect(
-              unchangedZip.findFile(entry.name)?.content,
-              entry.content,
+              sha256
+                  .convert(
+                    unchangedZip.findFile(entry.name)!.content as List<int>,
+                  )
+                  .toString(),
+              sha256.convert(entry.content as List<int>).toString(),
               reason: 'Unedited $name: ${entry.name}',
             );
           }
+          debugPrint('CORPUS UNCHANGED SAVE: $name');
           final marker = ' — GenOffice QA ${index + 1}';
           await bridge.controller.runJavaScript('''
           (() => {
@@ -148,16 +155,21 @@ void main() {
               continue;
             }
             expect(
-              editedZip.findFile(entry.name)?.content,
-              entry.content,
+              sha256
+                  .convert(editedZip.findFile(entry.name)!.content as List<int>)
+                  .toString(),
+              sha256.convert(entry.content as List<int>).toString(),
               reason: 'Edited $name: ${entry.name}',
             );
           }
           expect(
-            await File(imported.filePath!).readAsBytes(),
-            source,
+            sha256
+                .convert(await File(imported.filePath!).readAsBytes())
+                .toString(),
+            sha256.convert(source).toString(),
             reason: 'Original $name',
           );
+          debugPrint('CORPUS EDITED SAVE: $name');
           await bridge.open(
             EditorDocument(id: 'reopened-$index', name: name, bytes: bytes),
           );
