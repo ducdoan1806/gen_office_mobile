@@ -5,6 +5,8 @@ import '../../editor/presentation/document_editor_page.dart';
 import '../../editor/presentation/mobile_docx_editor_page.dart';
 import '../domain/office_document.dart';
 import '../data/docx_file_picker.dart';
+import '../data/pdf_file_picker.dart';
+import '../../pdf/presentation/pdf_viewer_page.dart';
 import '../data/android_document_files.dart';
 import '../../editor/data/document_recovery_store.dart';
 import '../../editor/presentation/recovery_documents.dart';
@@ -16,6 +18,7 @@ class DocumentLibraryPage extends StatefulWidget {
     super.key,
     required this.dependencies,
     this.pickDocument = pickDocxFile,
+    this.pickPdf = pickPdfFile,
     this.recoveryStore,
     this.onBridgeCreated,
   });
@@ -23,6 +26,7 @@ class DocumentLibraryPage extends StatefulWidget {
   final DocumentRecoveryStore? recoveryStore;
   final ValueChanged<WebViewDocumentEditorBridge>? onBridgeCreated;
   final Future<XFile?> Function() pickDocument;
+  final Future<XFile?> Function() pickPdf;
   @override
   State<DocumentLibraryPage> createState() => _DocumentLibraryPageState();
 }
@@ -48,7 +52,9 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   }) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => document.format == DocumentFormat.docx
+        builder: (_) => document.format == DocumentFormat.pdf
+            ? PdfViewerPage(document: document)
+            : document.format == DocumentFormat.docx
             ? MobileDocxEditorPage(
                 document: document,
                 recoveryStore: _recovery,
@@ -65,16 +71,19 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     if (mounted) _reload();
   }
 
-  Future<void> _import() async {
+  Future<void> _import({bool pdf = false}) async {
     if (_importing) return;
     setState(() => _importing = true);
     try {
-      final file = await widget.pickDocument();
+      final file = await (pdf ? widget.pickPdf() : widget.pickDocument());
       if (file == null) return;
       if (await file.length() > LocalDocumentRepository.maxImportBytes) {
-        throw StateError('DOCX vượt giới hạn 20 MB.');
+        throw StateError('Tài liệu vượt giới hạn 20 MB.');
       }
-      final document = await widget.dependencies.documents.storeDocx(
+      final store = pdf
+          ? widget.dependencies.documents.storePdf
+          : widget.dependencies.documents.storeDocx;
+      final document = await store(
         file.name,
         await file.readAsBytes(),
         sourceUri: file is SourceDocxFile ? file.sourceUri : null,
@@ -84,9 +93,11 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       await _open(document);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Không mở được DOCX: $error')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không mở được ${pdf ? 'PDF' : 'DOCX'}: $error'),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -98,6 +109,12 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     appBar: AppBar(
       title: const Text('GenOffice Mobile'),
       actions: [
+        TextButton.icon(
+          key: const Key('import-pdf'),
+          onPressed: _importing ? null : () => _import(pdf: true),
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: const Text('Mở PDF'),
+        ),
         IconButton(
           onPressed: _reload,
           tooltip: 'Tải lại',
@@ -107,7 +124,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     ),
     floatingActionButton: FloatingActionButton.extended(
       key: const Key('import-docx'),
-      onPressed: _importing ? null : _import,
+      onPressed: _importing ? null : () => _import(),
       icon: _importing
           ? const SizedBox(
               width: 20,
@@ -171,7 +188,11 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                 itemBuilder: (context, index) {
                   final document = documents[index];
                   return ListTile(
-                    leading: const Icon(Icons.description_outlined),
+                    leading: Icon(
+                      document.format == DocumentFormat.pdf
+                          ? Icons.picture_as_pdf_outlined
+                          : Icons.description_outlined,
+                    ),
                     title: Text(document.name),
                     subtitle: Text(
                       [

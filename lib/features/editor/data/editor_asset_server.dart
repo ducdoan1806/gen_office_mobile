@@ -18,6 +18,7 @@ class EditorAssetServer {
     required this.persistExport,
     this.persistCopy,
     this.persistRecovery,
+    this.pdf = false,
     AssetBundle? bundle,
   }) : _bundle = bundle ?? rootBundle;
   static const maxDocumentBytes = 20 * 1024 * 1024;
@@ -25,6 +26,7 @@ class EditorAssetServer {
   final PersistEditorExport persistExport;
   final PersistEditorExport? persistCopy;
   final PersistEditorRecovery? persistRecovery;
+  final bool pdf;
   final AssetBundle _bundle;
   HttpServer? _server;
   late Uri _base;
@@ -36,7 +38,9 @@ class EditorAssetServer {
   int saveRevision = 0;
   final _saved = StreamController<EditorSaveResult>.broadcast();
   Stream<EditorSaveResult> get saved => _saved.stream;
-  Uri get editorUri => _base.resolve('index.html?mobile=1');
+  Uri get editorUri => pdf
+      ? _base.resolve('pdf.html?file=documents/$_documentKey')
+      : _base.resolve('index.html?mobile=1');
   Uri get baseUri => _base;
 
   Future<void> start() async {
@@ -57,8 +61,8 @@ class EditorAssetServer {
     if (document.bytes.length > maxExportBytes) {
       throw ArgumentError('DOCX vượt giới hạn 32 MB');
     }
-    if (!document.name.toLowerCase().endsWith('.docx')) {
-      throw ArgumentError('Chỉ hỗ trợ DOCX');
+    if (!document.name.toLowerCase().endsWith(pdf ? '.pdf' : '.docx')) {
+      throw ArgumentError('Loại tài liệu không hợp lệ');
     }
     _document = document;
     _documentKey = List.generate(
@@ -89,6 +93,10 @@ class EditorAssetServer {
         return;
       }
       final path = request.uri.path.substring(_base.path.length);
+      if (pdf && (path == 'exports' || path == 'recovery')) {
+        response.statusCode = HttpStatus.methodNotAllowed;
+        return;
+      }
       if ((path == 'exports' || path == 'recovery') &&
           request.method == 'POST') {
         final recovery = path == 'recovery';
@@ -168,10 +176,12 @@ class EditorAssetServer {
         return;
       }
       if (path == 'documents/$_documentKey' && _document != null) {
-        response.headers.contentType = ContentType(
-          'application',
-          'vnd.openxmlformats-officedocument.wordprocessingml.document',
-        );
+        response.headers.contentType = pdf
+            ? ContentType('application', 'pdf')
+            : ContentType(
+                'application',
+                'vnd.openxmlformats-officedocument.wordprocessingml.document',
+              );
         response.add(_document!.bytes);
         return;
       }
@@ -218,6 +228,7 @@ class EditorAssetServer {
     if (path.endsWith('.ttf')) return ContentType('font', 'ttf');
     if (path.endsWith('.svg')) return ContentType('image', 'svg+xml');
     if (path.endsWith('.json')) return ContentType.json;
+    if (path.endsWith('.wasm')) return ContentType('application', 'wasm');
     return ContentType.binary;
   }
 

@@ -19,6 +19,7 @@ class MainActivity : FlutterActivity() {
     private val main = Handler(Looper.getMainLooper())
     private var pending: MethodChannel.Result? = null
     private var creating = false
+    private var openingPdf = false
     private val accessFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     private val maxBytes = 32 * 1024 * 1024
 
@@ -42,10 +43,11 @@ class MainActivity : FlutterActivity() {
                     result.error("busy", "Trình chọn file đang mở.", null)
                 } else {
                     creating = call.method == "create"
+                    openingPdf = !creating && call.argument<String>("format") == "pdf"
                     val intent = Intent(if (creating) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
-                        type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        addFlags(accessFlags or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                        type = if (openingPdf) "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        addFlags((if (openingPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags) or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                         if (creating) putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "document.docx")
                     call.argument<String>("initialUri")?.let {
                         putExtra(DocumentsContract.EXTRA_INITIAL_URI, Uri.parse(it))
@@ -86,7 +88,7 @@ class MainActivity : FlutterActivity() {
             while (true) {
                 val count = stream.read(buffer)
                 if (count < 0) break
-                require(output.size() + count <= maxBytes) { "DOCX vượt giới hạn 32 MB." }
+                require(output.size() + count <= maxBytes) { "Tài liệu vượt giới hạn 32 MB." }
                 output.write(buffer, 0, count)
             }
             return output.toByteArray()
@@ -99,7 +101,7 @@ class MainActivity : FlutterActivity() {
                 val value = action()
                 main.post { result.success(value) }
             } catch (error: Exception) {
-                main.post { result.error("source_file", "Không truy cập/lưu được file gốc. Nếu file đã bị di chuyển hoặc mất quyền, hãy mở lại bằng nút Mở DOCX. ", null) }
+                main.post { result.error("source_file", "Không truy cập/lưu được file gốc. Nếu file đã bị di chuyển hoặc mất quyền, hãy chọn mở lại file.", null) }
             }
         }
     }
@@ -113,15 +115,17 @@ class MainActivity : FlutterActivity() {
         val uri = data?.data
         if (resultCode != Activity.RESULT_OK || uri == null) { result.success(null); return }
         val isNew = creating
+        val isPdf = openingPdf
         background(result) {
             val granted = data.flags and accessFlags
-            require(granted and accessFlags == accessFlags) { "File cần quyền đọc và ghi. Hãy chọn file có thể chỉnh sửa." }
-            contentResolver.takePersistableUriPermission(uri, granted)
+            val required = if (isPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags
+            require(granted and required == required) { "File thiếu quyền truy cập cần thiết." }
+            contentResolver.takePersistableUriPermission(uri, granted and required)
             var name = "document.docx"
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) name = cursor.getString(0)
             }
-            require(name.endsWith(".docx", ignoreCase = true)) { "Hãy chọn file DOCX." }
+            require(name.endsWith(if (isPdf) ".pdf" else ".docx", ignoreCase = true)) { "Loại file không hợp lệ." }
             mapOf("uri" to uri.toString(), "name" to name, "bytes" to if (isNew) ByteArray(0) else read(uri))
         }
     }

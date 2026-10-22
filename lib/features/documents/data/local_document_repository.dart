@@ -34,6 +34,12 @@ class LocalDocumentRepository implements DocumentRepository {
   ).join();
 
   String _contentFile(Map<String, dynamic> data) {
+    if (data['format'] == 'pdf') {
+      if (data['contentFile'] != 'content.pdf') {
+        throw const FormatException('Metadata PDF không hợp lệ.');
+      }
+      return 'content.pdf';
+    }
     final name = data['contentFile'] ?? 'content.docx';
     if (name is! String ||
         (name != 'content.docx' && !_contentPattern.hasMatch(name))) {
@@ -46,7 +52,9 @@ class LocalDocumentRepository implements DocumentRepository {
     final data =
         jsonDecode(await File('${directory.path}/document.json').readAsString())
             as Map<String, dynamic>;
-    if (data['version'] != 1 || data['id'] != id || data['format'] != 'docx') {
+    if (data['version'] != 1 ||
+        data['id'] != id ||
+        !['docx', 'pdf'].contains(data['format'])) {
       throw const FormatException('Metadata tài liệu không hợp lệ.');
     }
     _contentFile(data);
@@ -57,7 +65,9 @@ class LocalDocumentRepository implements DocumentRepository {
       OfficeDocument(
         id: data['id'] as String,
         name: data['name'] as String,
-        format: DocumentFormat.docx,
+        format: data['format'] == 'pdf'
+            ? DocumentFormat.pdf
+            : DocumentFormat.docx,
         filePath: '${directory.path}/${_contentFile(data)}',
         sourceUri: data['sourceUri'] as String?,
         createdAt: DateTime.parse(data['createdAt'] as String),
@@ -69,6 +79,59 @@ class LocalDocumentRepository implements DocumentRepository {
 
   Future<Directory> _root() async =>
       Directory('${(await _documentsDirectory()).path}/GenOffice');
+
+  @override
+  Future<OfficeDocument> storePdf(
+    String name,
+    Uint8List bytes, {
+    String? sourceUri,
+  }) async {
+    name = name.split(RegExp(r'[/\\]')).last.trim();
+    if (!name.toLowerCase().endsWith('.pdf') ||
+        name.length <= 4 ||
+        name.contains(RegExp(r'[\x00-\x1f]'))) {
+      throw ArgumentError('Tên tài liệu PDF không hợp lệ.');
+    }
+    if (bytes.length < 5 ||
+        bytes.length > maxImportBytes ||
+        String.fromCharCodes(bytes.take(5)) != '%PDF-') {
+      throw ArgumentError('PDF không hợp lệ hoặc vượt giới hạn 20 MB.');
+    }
+    if (sourceUri != null) {
+      for (final existing in await list()) {
+        if (existing.sourceUri == sourceUri &&
+            existing.format == DocumentFormat.pdf) {
+          return existing;
+        }
+      }
+    }
+    final id = _newId();
+    final parent = Directory('${(await _root()).path}/documents');
+    await parent.create(recursive: true);
+    final staging = await Directory('${parent.path}/.$id.tmp').create();
+    final data = <String, dynamic>{
+      'version': 1,
+      'id': id,
+      'name': name,
+      'format': 'pdf',
+      'contentFile': 'content.pdf',
+      if (sourceUri != null) 'sourceUri': sourceUri,
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'sizeBytes': bytes.length,
+    };
+    try {
+      await File(
+        '${staging.path}/content.pdf',
+      ).writeAsBytes(bytes, flush: true);
+      await File(
+        '${staging.path}/document.json',
+      ).writeAsString(jsonEncode(data), flush: true);
+      return _document(await staging.rename('${parent.path}/$id'), data);
+    } catch (_) {
+      if (await staging.exists()) await staging.delete(recursive: true);
+      rethrow;
+    }
+  }
 
   @override
   Future<OfficeDocument> storeDocx(
@@ -168,6 +231,7 @@ class LocalDocumentRepository implements DocumentRepository {
     try {
       await previous;
       final data = await _metadata(directory, id);
+      if (data['format'] != 'docx') throw StateError('PDF chỉ hỗ trợ xem.');
       final oldContent = _contentFile(data);
       final revision = _newId();
       final content = File('${directory.path}/content-$revision.docx');

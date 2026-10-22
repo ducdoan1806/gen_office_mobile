@@ -1,6 +1,6 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 21/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 22/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
@@ -55,9 +55,13 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
   - [x] Tạo bản tạm DOCX mỗi 5 giây và khi chuyển nền; khôi phục qua màn hình chính, giữ dirty cho đến khi Lưu vào nguồn.
   - [x] Kiểm thử phục hồi mất tiến trình bằng force-stop Android rồi chạy tiến trình mới; kiểm tra nguồn thay đổi, lỗi/hủy Lưu và dọn bản tạm sau Lưu thành công. Đây là mô phỏng crash/thu hồi app trên emulator, chưa ép crash native/LMK thật. Xem [khôi phục phiên](session-recovery.md).
 
-- [ ] **Bước 7. Tích hợp PDF viewer**
-  - [ ] Mở và hiển thị PDF thật.
-  - [ ] Tìm kiếm và điều hướng trang.
+- [x] **Bước 7. Tích hợp PDF viewer trên Android**
+  - [x] Mở PDF thật qua SAF với quyền đọc; lưu danh sách gần đây và đọc lại từ nguồn khi mở.
+  - [x] Hiển thị offline bằng PDF.js; cuộn, phóng to/thu nhỏ và vừa chiều rộng trang.
+  - [x] Tìm chữ toàn tài liệu, tô sáng, đếm và chuyển kết quả; trang trước/sau và nhập số trang.
+  - [x] Kiểm thử WebView Android với PDF 3 trang có chữ/hình, tìm kiếm/chuyển trang và báo lỗi file hỏng; 36 unit/widget test đạt. Xem [PDF viewer](pdf-viewer.md).
+  - [x] Kiểm thử SAF native với PDF trong Downloads: giữ quyền đọc, chặn ghi, thu hồi quyền và giữ nguyên file nguồn; 4 bài DOCX WebView hồi quy đạt.
+  - Giới hạn 20 MB, chỉ đọc; chưa OCR, chưa hỗ trợ PDF có mật khẩu. Chưa nghiệm thu trên điện thoại thật; iOS vẫn hoãn.
 
 - [ ] **Bước 8. Kiểm thử trên Android thực tế**
   - [x] Build APK và kiểm thử DOCX trên emulator.
@@ -90,8 +94,8 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 
 ## Điểm tiếp tục
 
-Bước 6 đã hoàn thành trong luồng DOCX hiện tại trên Android emulator: bản tạm, khôi phục ở tiến trình mới, xử lý lỗi lưu và dọn bản tạm. Khi tiếp tục phát triển, ưu tiên **bước 7** (PDF viewer trên Android), rồi các mục XLSX/PPTX của **bước 9** trên Android. Phần iOS tiếp tục tạm hoãn.
+Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Khi chủ dự án yêu cầu tiếp tục, ưu tiên các mục XLSX/PPTX của **bước 9** trên Android. Phần iOS tiếp tục tạm hoãn.
 
 Chưa tiếp tục bước 5, các mục nghiệm thu điện thoại thật/Word đang hoãn hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
-Đây là tổng hợp kết quả kiểm thử đã ghi nhận, không phải lần chạy lại test. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md) và [build iOS](ios-build.md).
+Đây là tổng hợp kết quả kiểm thử đã ghi nhận; phạm vi và ngày kiểm chứng được ghi trong tài liệu từng tính năng. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md), [PDF viewer](pdf-viewer.md) và [build iOS](ios-build.md).

@@ -2,7 +2,7 @@
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
-Hiện đã tích hợp DOCX trên Android: mở file, sửa văn bản/định dạng/bảng, undo/redo và lưu trực tiếp file gốc trên Android. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX, PPTX và PDF chưa tích hợp editor thực tế.
+Hiện đã tích hợp DOCX trên Android: mở file, sửa văn bản/định dạng/bảng, undo/redo và lưu trực tiếp file gốc trên Android. Có PDF viewer offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX và PPTX chưa tích hợp editor thực tế. Ưu tiên Android; phát triển và kiểm thử iOS hiện tạm hoãn.
 
 ## 1. Chuẩn bị môi trường
 
@@ -72,6 +72,10 @@ Nếu chỉ kết nối một thiết bị phù hợp, có thể dùng `flutter 
 Android giữ quyền đọc/ghi của file đã chọn qua Storage Access Framework. Danh sách gần đây lưu liên kết đến file gốc; khi mở lại, app đọc nội dung từ file đó. Các bản sao được nhập bằng phiên bản cũ cần mở lại file gốc bằng **Mở DOCX**, hoặc chọn lại file gốc ở lần Lưu đầu tiên. **Lưu thành bản mới** mở trình chọn nơi lưu của Android. iOS/macOS vẫn dùng cơ chế bản sao riêng; share sheet chưa triển khai.
 
 App tạo bản tạm cho DOCX đang sửa khoảng mỗi 5 giây. Nếu app bị đóng đột ngột, mở lại sẽ có mục **Khôi phục** để tiếp tục từ bản tạm gần nhất; bấm **Lưu** để cập nhật file gốc. Xem [khôi phục phiên](docs/session-recovery.md) về giới hạn và kiểm thử.
+
+### Thử đọc PDF trên Android
+
+Bấm **Mở PDF** ở thanh trên màn hình chính, chọn PDF trong điện thoại (tối đa 20 MB). Dùng trang trước/sau hoặc nhập số trang; nhập chữ và bấm **Tìm**, dùng ↑/↓ để chuyển kết quả. Có nút phóng to/thu nhỏ/vừa trang. File xuất hiện trong danh sách gần đây và được mở lại từ nguồn. PDF chỉ đọc; file scan không có lớp text chưa tìm chữ được, file có mật khẩu chưa hỗ trợ. Xem [PDF viewer](docs/pdf-viewer.md).
 
 ## 4. Build APK và cài lên điện thoại
 
@@ -216,9 +220,9 @@ Chi tiết: [bridge mobile](docs/mobile-webview.md), [tách editor khỏi Electr
 
 ## 9. Giới hạn hiện tại
 
-- Chỉ DOCX đã được tích hợp thực tế; các định dạng khác vẫn là màn hình mẫu.
+- DOCX có chỉnh sửa/lưu; PDF có xem/tìm kiếm/điều hướng trên Android. XLSX/PPTX vẫn là màn hình mẫu.
 - Giới hạn import 20 MB và export 32 MB. Bộ nhớ khi giải nén/hiển thị còn tùy nội dung file.
-- Phiên chỉnh sửa nằm trong bộ nhớ; chưa có phục hồi sau crash. File đã lưu nằm trong vùng riêng của app, có thể mất khi gỡ ứng dụng.
+- DOCX đã có bản tạm và phục hồi sau mất tiến trình; chỉ bảo vệ đến checkpoint hoàn chỉnh gần nhất. File nguồn Android được lưu qua SAF; cache và bản tạm riêng có thể mất khi gỡ ứng dụng. Xem [khôi phục phiên](docs/session-recovery.md).
 - Ribbon gốc đã hỗ trợ cuộn ngang; vẫn cần tối ưu cảm ứng và kiểm tra trên nhiều điện thoại thật.
 - Các tích hợp Electron như Zotero, CLI/MCP, mã hóa file và xuất PDF native chưa được chuyển sang mobile.
 - AI chưa kết nối. App dùng loopback trên chính thiết bị để phục vụ editor; không cần API AI hoặc web server bên ngoài cho việc chỉnh sửa DOCX.

@@ -28,6 +28,7 @@ End-to-end tests use locally installed macOS Chrome by default. Set CHROME_PATH 
 - `vendor/docx-engine`: upstream OOXML parser and patch writer.
 - `vite.config.ts`: package entrypoint mappings and a Node/Electron rejection guard for both main and worker bundles.
 - `prototype.html`: keeps the earlier minimal paragraph prototype separately; this is no longer the default editor.
+- `pdf.html` / `src/pdf`: separate read-only PDF.js viewer for the Android host, with full-document search, highlights, page navigation and zoom. Worker/fonts/CMaps/WASM are packaged by `tool/bundle_editor.mjs`; see [PDF viewer](../docs/pdf-viewer.md).
 
 ## Browser capabilities and limits
 

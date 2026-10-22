@@ -69,6 +69,6 @@ export default defineConfig({
 {find: '@genoffice/i18n', replacement: path('./vendor/i18n/src/index.ts')},
 {find: '@genoffice/ui', replacement: path('./vendor/ui/src/index.ts')}]},
  worker:{format:'es',plugins:()=>[browserGuard()]},
- build:{rollupOptions:{input:{editor:path('./index.html'),prototype:path('./prototype.html')}}},
+ build:{target:'es2022',rollupOptions:{input:{editor:path('./index.html'),prototype:path('./prototype.html'),pdf:path('./pdf.html')}}},
  test:{include:['tests/**/*.test.ts']},
 });

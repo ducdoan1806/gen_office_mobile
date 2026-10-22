@@ -5,6 +5,13 @@ import '../domain/office_document.dart';
 /// Demo fixtures for tests; the app uses LocalDocumentRepository.
 class MemoryDocumentRepository implements DocumentRepository {
   @override
+  Future<OfficeDocument> storePdf(
+    String name,
+    Uint8List bytes, {
+    String? sourceUri,
+  }) async =>
+      throw UnsupportedError('Demo repository does not persist documents.');
+  @override
   Future<OfficeDocument> updateDocx(
     String id,
     Uint8List bytes, {
@@ -36,6 +43,7 @@ class MemoryDocumentRepository implements DocumentRepository {
       id: 'demo-pdf',
       name: 'Hướng dẫn an toàn.pdf',
       format: DocumentFormat.pdf,
+      assetPath: 'assets/samples/pdf-viewer-test.pdf',
     ),
   ];
 }
