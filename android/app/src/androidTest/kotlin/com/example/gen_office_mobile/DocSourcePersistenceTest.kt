@@ -26,7 +26,9 @@ class DocSourcePersistenceTest {
         val device = UiDevice.getInstance(instrumentation)
         val phase = InstrumentationRegistry.getArguments().getString("phase")
         org.junit.Assume.assumeTrue("Run explicitly with phase=prepare or verify", phase == "prepare" || phase == "verify")
-        val probe = File(context.cacheDir, "doc-saf-phone-qa")
+        val format = InstrumentationRegistry.getArguments().getString("format") ?: "doc"
+        require(format in listOf("doc", "xlsx", "pptx"))
+        val probe = File(context.cacheDir, "$format-saf-phone-qa")
         fun shell(command: String) = instrumentation.uiAutomation.executeShellCommand(command).use {
             ParcelFileDescriptor.AutoCloseInputStream(it).readBytes()
         }
@@ -37,7 +39,7 @@ class DocSourcePersistenceTest {
                 assertTrue(context.contentResolver.persistedUriPermissions.any {
                     it.uri == uri && it.isReadPermission && it.isWritePermission
                 })
-                val expected = File(probe, "expected.doc").readBytes()
+                val expected = File(probe, "expected.$format").readBytes()
                 assertArrayEquals(expected, context.contentResolver.openInputStream(uri)!!.use { it.readBytes() })
                 assertArrayEquals(expected, shell("cat /sdcard/Download/$filename"))
                 context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(expected) }
@@ -52,13 +54,30 @@ class DocSourcePersistenceTest {
         }
         require(phase == "prepare" && !probe.exists())
         probe.mkdirs()
-        val filename = "genoffice-qa-${UUID.randomUUID()}.doc"
+        val filename = "genoffice-qa-${UUID.randomUUID()}.$format"
         File(probe, "filename").writeText(filename)
-        val converter = DocConversionClient(context)
-        val docx = context.assets.open("flutter_assets/assets/samples/legacy-conversion.docx").use { it.readBytes() }
-        val original = converter.convert(docx, "doc")
-        val editedDocx = context.assets.open("flutter_assets/assets/samples/factory-demo.docx").use { it.readBytes() }
-        val edited = converter.convert(editedDocx, "doc")
+        val original: ByteArray
+        val edited: ByteArray
+        if(format=="doc") {
+            val converter = DocConversionClient(context)
+            original = converter.convert(context.assets.open("flutter_assets/assets/samples/legacy-conversion.docx").use { it.readBytes() }, "doc")
+            edited = converter.convert(context.assets.open("flutter_assets/assets/samples/factory-demo.docx").use { it.readBytes() }, "doc")
+        } else {
+            original = context.assets.open("flutter_assets/assets/samples/${if(format=="xlsx") "sheets-test.xlsx" else "slides-test.pptx"}").use { it.readBytes() }
+            val output=java.io.ByteArrayOutputStream()
+            java.util.zip.ZipOutputStream(output).use { writer ->
+                java.util.zip.ZipInputStream(java.io.ByteArrayInputStream(original)).use { reader ->
+                    while(true) {
+                        val entry=reader.nextEntry ?: break
+                        var data=reader.readBytes()
+                        if(entry.name=="xl/worksheets/sheet1.xml") data=data.toString(Charsets.UTF_8).replace("<v>12</v>","<v>25</v>").toByteArray(Charsets.UTF_8)
+                        if(entry.name=="ppt/slides/slide1.xml") data=data.toString(Charsets.UTF_8).replace("Báo cáo sản xuất","Báo cáo đã sửa").toByteArray(Charsets.UTF_8)
+                        writer.putNextEntry(java.util.zip.ZipEntry(entry.name));writer.write(data);writer.closeEntry()
+                    }
+                }
+            }
+            edited=output.toByteArray()
+        }
         assertFalse(original.contentEquals(edited))
         val pipes = instrumentation.uiAutomation.executeShellCommandRw("tee /sdcard/Download/$filename")
         ParcelFileDescriptor.AutoCloseOutputStream(pipes[1]).use { it.write(original) }
@@ -103,7 +122,7 @@ class DocSourcePersistenceTest {
             call("write", mapOf("uri" to uri, "bytes" to edited)).await()
             assertArrayEquals(edited, shell("cat /sdcard/Download/$filename"))
             File(probe, "uri").writeText(uri)
-            File(probe, "expected.doc").writeBytes(edited)
+            File(probe, "expected.$format").writeBytes(edited)
             keepForVerify = true
         } finally {
             instrumentation.runOnMainSync { activity.finish() }

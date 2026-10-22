@@ -65,13 +65,14 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 
 - [ ] **Bước 8. Kiểm thử trên Android thực tế**
   - [x] Build APK và kiểm thử DOCX trên emulator.
-  - [x] Kiểm thử tự động trên Samsung Android 16/ARM64: DOC offline, 4 ca DOCX, 3 ca PDF và khôi phục qua force-stop. 5 DOCX mẫu đạt; file lớn 10,9 MB mở/sửa/lưu nguồn/mở lại đạt trên app thường (bài integration lớn chưa hoàn tất). SAF native và quyền DOC qua hai tiến trình đạt. Xem [máy thật](android-device-qa.md).
-  - [ ] Kiểm thử điện thoại thật: file lớn, bàn phím tiếng Việt, bộ nhớ và chuyển nền.
+  - [x] Kiểm thử tự động trên Samsung Android 16/ARM64: DOC offline, 4 ca DOCX, 3 ca PDF và khôi phục qua force-stop. 6 DOCX mẫu và fixture 10,9 MB đã đạt integration mở/sửa/lưu/mở lại; đã sửa lỗi rơi lệnh khi React thay bộ nhận lệnh. SAF native và quyền DOC/XLSX/PPTX qua hai tiến trình đạt. Xem [máy thật](android-device-qa.md).
+  - [x] Bài integration corpus 7 file, gồm file 10,9 MB, đạt trên Samsung thật; lưu nguyên trạng và sửa/lưu/mở lại, giữ các phần ZIP không sửa.
+  - [ ] Nghiệm thu bàn phím tiếng Việt, cảm ứng; stress bộ nhớ/LMK và chuyển nền dài trên thiết bị mục tiêu.
   - [ ] Xử lý lỗi trên thiết bị mục tiêu và nghiệm thu.
 
 - [ ] **Bước 9. Mở rộng Sheets, Slides và iOS sau khi luồng DOCX ổn định**
-  - [ ] Tích hợp Sheets/XLSX thực tế.
-  - [ ] Tích hợp Slides/PPTX thực tế.
+  - [x] Tích hợp Sheets/XLSX trên Android từ gateway/Univer GenOffice: mở, sửa ô/công thức, undo/redo, phục hồi, lưu và mở lại đã đạt trên Samsung Android 16. Công cụ nâng cao desktop chưa được tích hợp đầy đủ.
+  - [x] Tích hợp Slides/PPTX trên Android từ engine/ops/canvas GenOffice: mở, sửa văn bản, undo/redo, phục hồi, lưu và mở lại đã đạt trên Samsung Android 16. Công cụ nâng cao desktop chưa được tích hợp đầy đủ.
   - [x] Cấu hình và sửa build iOS với Flutter 3.35.3 / Xcode 27, deployment target iOS 15.
   - [x] Build Debug và kiểm thử DOCX trên iPhone 18 Pro Simulator / iOS 27.
   - [x] Build iOS Release không ký (`--no-codesign`).
@@ -97,9 +98,11 @@ Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai
 - [x] Thiết lập nhánh `dev`; chỉ đưa lên nhánh chính khi chủ dự án chấp thuận.
 - [x] Merge PR #1 và [PR #2 sửa iOS](https://github.com/ducdoan1806/gen_office_mobile/pull/2) theo yêu cầu.
 
+Chi tiết phần Sheets/Slides và giới hạn hiện tại: [Android Sheets/Slides](sheets-slides-android.md). Source gốc được cố định tại cùng commit với DOCX để giữ tương thích giữa các engine.
+
 ## Điểm tiếp tục
 
-Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Khi chủ dự án yêu cầu tiếp tục, còn nghiệm thu bàn phím/cảm ứng, điều tra bài integration file lớn và các mục XLSX/PPTX của **bước 9** trên Android. Phần iOS tiếp tục tạm hoãn.
+Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn.
 
 Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 

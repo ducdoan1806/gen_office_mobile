@@ -18,6 +18,10 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
    if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname + 'documents/')) throw new Error('Invalid document URL');
    return url.href;
  };
+ let rendererReady = false;
+ const queued = new Map<string,Command>();
+ const dispatch = (command:Command) => window.dispatchEvent(new CustomEvent('genoffice:command',{detail:command}));
+ window.addEventListener('genoffice:not-ready',()=>{rendererReady=false;});
  const pending = new Map<string,{resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
  window.addEventListener('genoffice:reply', (event) => {
    const reply = (event as CustomEvent).detail;
@@ -25,11 +29,15 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
    clearTimeout(item.timer); pending.delete(reply.id);
    reply.ok ? item.resolve(reply.value) : item.reject(new Error(reply.error));
  });
- window.addEventListener('genoffice:ready',()=>send({type:'ready',protocol:1}));
+ window.addEventListener('genoffice:ready',()=>{
+   rendererReady=true;
+   for(const [id,command] of queued){queued.delete(id);if(pending.has(id))dispatch(command);}
+   send({type:'ready',protocol:1});
+ });
  const invokeRenderer = (command: Command) => new Promise<unknown>((resolve,reject)=>{
-   const timer=setTimeout(()=>{pending.delete(command.id);reject(new Error('Renderer command timed out'));},command.method==='save'?600000:45000);
+   const timer=setTimeout(()=>{pending.delete(command.id);queued.delete(command.id);reject(new Error('Renderer command timed out'));},command.method==='save'?600000:45000);
    pending.set(command.id,{resolve,reject,timer});
-   window.dispatchEvent(new CustomEvent('genoffice:command',{detail:command}));
+   if(rendererReady)dispatch(command);else queued.set(command.id,command);
  });
  win.genOfficeMobile = {async receive(command) {
    try {

@@ -1,0 +1,10 @@
+import {describe,it,expect} from 'vitest';
+import {readFileSync} from 'fs';
+import JSZip from 'jszip';
+import {OfficePackage} from '../src/office/package';
+const fixture=(name:string)=>new Uint8Array(readFileSync(new URL('../../assets/samples/'+name,import.meta.url)));
+describe('GenOffice upstream office adapters',()=>{
+ it.each(['xlsx','pptx'] as const)('leaves an unchanged %s byte-identical',async kind=>{const original=fixture(kind==='xlsx'?'sheets-test.xlsx':'slides-test.pptx'),p=await OfficePackage.open(original,kind);expect(await p.bytes()).toEqual(original);});
+ it('patches XLSX with the upstream gateway and preserves charts',async()=>{const source=fixture('sheets-test.xlsx'),p=await OfficePackage.open(source,'xlsx');expect(p.input(0,'B2')).toBe('12');p.setCell(0,'B2','25');expect(p.dirty).toBe(true);p.undo();expect(p.input(0,'B2')).toBe('12');p.redo();const bytes=await p.bytes(),again=await OfficePackage.open(bytes,'xlsx');expect(again.input(0,'B2')).toBe('25');expect(again.input(0,'D2')).toBe('=SUM(B2:C2)');const a=await JSZip.loadAsync(source),b=await JSZip.loadAsync(bytes);for(const part of Object.keys(a.files).filter(n=>n.startsWith('xl/charts/')))expect(await b.file(part)!.async('uint8array')).toEqual(await a.file(part)!.async('uint8array'));});
+ it('uses the PPTX transaction engine, retaining media and notes',async()=>{const source=fixture('slides-test.pptx'),p=await OfficePackage.open(source,'pptx');const before=p.paragraphText(0,0);p.setParagraph(0,0,'Kiểm thử GenOffice');expect(p.paragraphText(0,0)).toBe('Kiểm thử GenOffice');p.undo();expect(p.paragraphText(0,0)).toBe(before);p.redo();const bytes=await p.bytes(),again=await OfficePackage.open(bytes,'pptx');expect(again.paragraphText(0,0)).toBe('Kiểm thử GenOffice');const a=await JSZip.loadAsync(source),b=await JSZip.loadAsync(bytes);for(const part of Object.keys(a.files).filter(n=>!a.files[n].dir&&/ppt\/(media|notesSlides)\//.test(n)))expect(await b.file(part)!.async('uint8array')).toEqual(await a.file(part)!.async('uint8array'));});
+});

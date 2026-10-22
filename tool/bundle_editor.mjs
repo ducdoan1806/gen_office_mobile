@@ -1,3 +1,4 @@
+import {collectEditorLicenses} from './editor_licenses.mjs';
 import {cpSync,existsSync,mkdirSync,readdirSync,rmSync,writeFileSync,readFileSync} from 'node:fs';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -9,6 +10,7 @@ if(!process.argv.includes('--no-build')) {
  const result=spawnSync('npm',['run','build'],{cwd:editor,stdio:'inherit',shell:process.platform==='win32'});
  if(result.status!==0)process.exit(result.status??1);
 }
+collectEditorLicenses(editor,join(editor,'dist','THIRD-PARTY-LICENSES.txt'));
 const destination=join(root,'assets/editor');mkdirSync(destination,{recursive:true});
 // Keep the PDF reader fully offline, including CJK maps and fallback fonts.
 for(const name of ['cmaps','standard_fonts','wasm','iccs'])cpSync(join(editor,'node_modules/pdfjs-dist',name),join(editor,'dist/pdf',name),{recursive:true});

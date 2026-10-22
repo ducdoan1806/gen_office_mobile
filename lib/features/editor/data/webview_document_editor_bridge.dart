@@ -125,7 +125,7 @@ class WebViewDocumentEditorBridge implements DocumentEditorBridge {
     final revision = server.saveRevision;
     await _command('save');
     if (server.saveRevision == revision || server.lastSave == null) {
-      throw StateError('Không nhận được DOCX đã lưu');
+      throw StateError('Không nhận được tài liệu đã lưu');
     }
     return server.lastSave!;
   }

@@ -30,7 +30,9 @@ class LocalDocumentRepository implements DocumentRepository {
   static const maxImportBytes = 20 * 1024 * 1024;
   static const maxExportBytes = 32 * 1024 * 1024;
   static final _idPattern = RegExp(r'^[a-f0-9]{32}$');
-  static final _contentPattern = RegExp(r'^content-[a-f0-9]{32}\.docx$');
+  static final _contentPattern = RegExp(
+    r'^content-[a-f0-9]{32}\.(docx|xlsx|pptx)$',
+  );
   static final _writes = <String, Future<void>>{};
 
   String _newId() => List.generate(
@@ -45,9 +47,12 @@ class LocalDocumentRepository implements DocumentRepository {
       }
       return 'content.pdf';
     }
-    final name = data['contentFile'] ?? 'content.docx';
+    final extension = data['format'] as String;
+    final name = data['contentFile'] ?? 'content.$extension';
     if (name is! String ||
-        (name != 'content.docx' && !_contentPattern.hasMatch(name))) {
+        (!name.endsWith('.$extension') ||
+            (name != 'content.$extension' &&
+                !_contentPattern.hasMatch(name)))) {
       throw const FormatException('Đường dẫn tài liệu không hợp lệ.');
     }
     return name;
@@ -59,7 +64,7 @@ class LocalDocumentRepository implements DocumentRepository {
             as Map<String, dynamic>;
     if (data['version'] != 1 ||
         data['id'] != id ||
-        !['docx', 'pdf'].contains(data['format'])) {
+        !['docx', 'pdf', 'xlsx', 'pptx'].contains(data['format'])) {
       throw const FormatException('Metadata tài liệu không hợp lệ.');
     }
     _contentFile(data);
@@ -70,9 +75,7 @@ class LocalDocumentRepository implements DocumentRepository {
       OfficeDocument(
         id: data['id'] as String,
         name: data['name'] as String,
-        format: data['format'] == 'pdf'
-            ? DocumentFormat.pdf
-            : DocumentFormat.docx,
+        format: DocumentFormat.values.byName(data['format'] as String),
         filePath: '${directory.path}/${_contentFile(data)}',
         sourceUri: data['sourceUri'] as String?,
         createdAt: DateTime.parse(data['createdAt'] as String),
@@ -147,10 +150,36 @@ class LocalDocumentRepository implements DocumentRepository {
     bool isExport = false,
     bool legacyDoc = false,
     String? sourceUri,
+  }) => storeOffice(
+    name,
+    bytes,
+    format: DocumentFormat.docx,
+    isExport: isExport,
+    legacyDoc: legacyDoc,
+    sourceUri: sourceUri,
+  );
+
+  @override
+  Future<OfficeDocument> storeOffice(
+    String name,
+    Uint8List bytes, {
+    required DocumentFormat format,
+    bool isExport = false,
+    bool legacyDoc = false,
+    String? sourceUri,
   }) async {
+    if (![
+          DocumentFormat.docx,
+          DocumentFormat.xlsx,
+          DocumentFormat.pptx,
+        ].contains(format) ||
+        (legacyDoc && format != DocumentFormat.docx)) {
+      throw ArgumentError('Định dạng không hỗ trợ sửa.');
+    }
+    final extension = format.name;
     // The display name is never used as a filesystem path.
     name = name.split(RegExp(r'[/\\]')).last.trim();
-    if (!name.toLowerCase().endsWith(legacyDoc ? '.doc' : '.docx') ||
+    if (!name.toLowerCase().endsWith(legacyDoc ? '.doc' : '.$extension') ||
         name.length <= (legacyDoc ? 4 : 5) ||
         name.contains(RegExp(r'[\x00-\x1f]'))) {
       throw ArgumentError('Tên tài liệu DOCX không hợp lệ.');
@@ -164,7 +193,7 @@ class LocalDocumentRepository implements DocumentRepository {
     if (sourceUri != null) {
       for (final existing in await list()) {
         if (existing.sourceUri == sourceUri &&
-            existing.format == DocumentFormat.docx &&
+            existing.format == format &&
             existing.legacyDoc == legacyDoc) {
           return existing;
         }
@@ -199,14 +228,14 @@ class LocalDocumentRepository implements DocumentRepository {
         ).writeAsBytes(originalDoc, flush: true);
       }
       await File(
-        '${staging.path}/content.docx',
+        '${staging.path}/content.$extension',
       ).writeAsBytes(bytes, flush: true);
       await File('${staging.path}/document.json').writeAsString(
         jsonEncode({
           'version': 1,
           'id': id,
           'name': name,
-          'format': 'docx',
+          'format': extension,
           if (legacyDoc) 'legacyDoc': true,
           if (sourceHash != null) 'sourceHash': sourceHash,
           if (sourceUri != null) 'sourceUri': sourceUri,
@@ -220,8 +249,8 @@ class LocalDocumentRepository implements DocumentRepository {
       return OfficeDocument(
         id: id,
         name: name,
-        format: DocumentFormat.docx,
-        filePath: '${committed.path}/content.docx',
+        format: format,
+        filePath: '${committed.path}/content.$extension',
         sourceUri: sourceUri,
         createdAt: createdAt,
         updatedAt: createdAt,
@@ -237,6 +266,13 @@ class LocalDocumentRepository implements DocumentRepository {
 
   @override
   Future<OfficeDocument> updateDocx(
+    String id,
+    Uint8List bytes, {
+    String? sourceUri,
+  }) => updateOffice(id, bytes, sourceUri: sourceUri);
+
+  @override
+  Future<OfficeDocument> updateOffice(
     String id,
     Uint8List bytes, {
     String? sourceUri,
@@ -266,7 +302,8 @@ class LocalDocumentRepository implements DocumentRepository {
     try {
       await previous;
       final data = await _metadata(directory, id);
-      if (data['format'] != 'docx') throw StateError('PDF chỉ hỗ trợ xem.');
+      if (data['format'] == 'pdf') throw StateError('PDF chỉ hỗ trợ xem.');
+      final extension = data['format'] as String;
       final oldContent = _contentFile(data);
       final revision = _newId();
       final sourceBytes = data['legacyDoc'] == true
@@ -275,12 +312,12 @@ class LocalDocumentRepository implements DocumentRepository {
       if (sourceBytes.length > maxExportBytes || sourceBytes.isEmpty) {
         throw StateError('Kết quả chuyển đổi vượt giới hạn 32 MB.');
       }
-      final content = File('${directory.path}/content-$revision.docx');
+      final content = File('${directory.path}/content-$revision.$extension');
       final metadata = File('${directory.path}/.document-$revision.tmp');
       final updated = <String, dynamic>{
         ...data,
         if (sourceUri != null) 'sourceUri': sourceUri,
-        'contentFile': 'content-$revision.docx',
+        'contentFile': 'content-$revision.$extension',
         'updatedAt': DateTime.now().toUtc().toIso8601String(),
         'sizeBytes': sourceBytes.length,
         if (data['legacyDoc'] == true)
@@ -309,7 +346,8 @@ class LocalDocumentRepository implements DocumentRepository {
         await for (final entity in directory.list(followLinks: false)) {
           final name = entity.uri.pathSegments.last;
           if (entity is File &&
-              (name == 'content.docx' || _contentPattern.hasMatch(name)) &&
+              (RegExp(r'^content\.(docx|xlsx|pptx)$').hasMatch(name) ||
+                  _contentPattern.hasMatch(name)) &&
               name != oldContent &&
               name != updated['contentFile']) {
             await entity.delete();

@@ -5,6 +5,23 @@ import '../domain/office_document.dart';
 /// Demo fixtures for tests; the app uses LocalDocumentRepository.
 class MemoryDocumentRepository implements DocumentRepository {
   @override
+  Future<OfficeDocument> storeOffice(
+    String name,
+    Uint8List bytes, {
+    required DocumentFormat format,
+    bool isExport = false,
+    bool legacyDoc = false,
+    String? sourceUri,
+  }) async =>
+      throw UnsupportedError('Demo repository does not persist documents.');
+  @override
+  Future<OfficeDocument> updateOffice(
+    String id,
+    Uint8List bytes, {
+    String? sourceUri,
+  }) async =>
+      throw UnsupportedError('Demo repository does not persist documents.');
+  @override
   Future<OfficeDocument> storePdf(
     String name,
     Uint8List bytes, {
