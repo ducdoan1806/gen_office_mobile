@@ -221,7 +221,7 @@ void main() {
       await tester.pageBack();
       await until(
         tester,
-        () => find.byKey(const Key('import-docx')).evaluate().isNotEmpty,
+        () => find.byKey(const Key('open-document')).evaluate().isNotEmpty,
       );
       await tester.pumpAndSettle();
       expect(find.text('Có tài liệu chưa lưu'), findsNothing);

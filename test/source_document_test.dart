@@ -57,6 +57,21 @@ void main() {
   });
 
   test(
+    'unified picker requests mixed formats and preserves DOC name',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(AndroidDocumentFiles.channel, (call) async {
+            expect(call.method, 'open');
+            expect((call.arguments as Map)['format'], 'all');
+            return {'uri': uri, 'name': 'legacy.DOC', 'bytes': original};
+          });
+      final file = await const AndroidDocumentFiles().pick(allDocuments: true);
+      expect(file!.name, 'legacy.DOC');
+      expect(file.sourceUri, uri);
+    },
+  );
+
+  test(
     'save writes source and keeps one recent entry across repository restart',
     () async {
       final document = await repository.storeDocx(

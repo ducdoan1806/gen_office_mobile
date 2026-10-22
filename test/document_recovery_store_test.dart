@@ -23,6 +23,29 @@ void main() {
   });
   tearDown(() => directory.delete(recursive: true));
   test(
+    'DOC recovery retains the source format and binary fingerprint',
+    () async {
+      const legacy = OfficeDocument(
+        id: 'legacy',
+        name: 'report.doc',
+        format: DocumentFormat.docx,
+        sourceUri: 'content://provider/legacy',
+        legacyDoc: true,
+        sourceHash: 'binary-hash',
+      );
+      await store.write(legacy, latest, baseHash: 'binary-hash');
+      final restarted = DocumentRecoveryStore(
+        documentsDirectory: () async => directory,
+      );
+      final recovered = (await restarted.list()).single;
+      expect(recovered.document.legacyDoc, isTrue);
+      expect(recovered.document.editorName, 'report.docx');
+      expect(recovered.document.sourceHash, 'binary-hash');
+      expect(recovered.baseHash, 'binary-hash');
+      expect(await recovered.read(), latest);
+    },
+  );
+  test(
     'reconstructs latest complete DOCX and original reference after restart',
     () async {
       await store.write(document, original, baseHash: 'original-hash');

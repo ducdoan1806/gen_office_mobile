@@ -17,13 +17,14 @@ class AndroidDocumentFiles {
     String? createName,
     String? initialUri,
     bool pdf = false,
+    bool allDocuments = false,
   }) async {
     final result = await channel.invokeMapMethod<String, dynamic>(
       createName == null ? 'open' : 'create',
       {
         if (createName != null) 'name': createName,
         if (initialUri != null) 'initialUri': initialUri,
-        if (pdf) 'format': 'pdf',
+        if (allDocuments) 'format': 'all' else if (pdf) 'format': 'pdf',
       },
     );
     if (result == null) return null;

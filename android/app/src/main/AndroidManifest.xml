@@ -5,6 +5,7 @@
         android:label="gen_office_mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <service android:name=".DocConversionService" android:exported="false" android:process=":doc_converter" android:stopWithTask="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

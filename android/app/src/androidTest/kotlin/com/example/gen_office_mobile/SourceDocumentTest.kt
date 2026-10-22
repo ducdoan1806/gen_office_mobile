@@ -54,7 +54,7 @@ class SourceDocumentTest {
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
         try {
             val initial = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download")
-            val selected = call(activity, "open", mapOf("initialUri" to initial.toString()))
+            val selected = call(activity, "open", mapOf("format" to "all", "initialUri" to initial.toString()))
             var file = device.wait(Until.findObject(By.text(filename)), 3000)
             if (file == null) {
                 val roots = device.findObject(UiSelector().description("Show roots"))

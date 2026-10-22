@@ -48,7 +48,7 @@ class PdfDocumentTest {
         }
         try {
             val initial = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download")
-            val reply = call("open", mapOf("format" to "pdf", "initialUri" to initial.toString()))
+            val reply = call("open", mapOf("format" to "all", "initialUri" to initial.toString()))
             var file = device.wait(Until.findObject(By.text(filename)), 10000)
             if (file == null) {
                 requireNotNull(device.wait(Until.findObject(By.desc("Search")), 10000)).click()

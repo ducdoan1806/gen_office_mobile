@@ -39,14 +39,25 @@ void main() {
     });
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
-      await tester.tap(find.byKey(const Key('import-docx')));
+      await tester.tap(find.byKey(const Key('open-document')));
       await Future<void>.delayed(const Duration(milliseconds: 150));
     });
+    // Filesystem imports finish on real time, outside the widget fake clock.
+    for (
+      var attempt = 0;
+      attempt < 100 && find.byKey(const Key('save-docx')).evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+    }
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     // Host widget tests cannot create Android WebView, but must reach its page.
     expect(find.byKey(const Key('save-docx')), findsOneWidget);
-    expect(find.textContaining('Không nhập được DOCX'), findsNothing);
+    expect(find.textContaining('Không mở được tài liệu'), findsNothing);
     await tester.runAsync(() async {
       await tester.pageBack();
       await Future<void>.delayed(const Duration(milliseconds: 150));
@@ -92,10 +103,10 @@ void main() {
 
       await showLibrary();
       expect(
-        find.text('Chưa có tài liệu. Nhấn “Mở DOCX” để thêm.'),
+        find.text('Chưa có tài liệu. Nhấn “Mở tài liệu” để thêm.'),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('import-docx')), findsOneWidget);
+      expect(find.byKey(const Key('open-document')), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.runAsync(
         () => repository().storeDocx(

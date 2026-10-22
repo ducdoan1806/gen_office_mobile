@@ -11,6 +11,8 @@ class OfficeDocument {
     this.createdAt,
     this.updatedAt,
     this.sizeBytes,
+    this.legacyDoc = false,
+    this.sourceHash,
   });
   final String id;
   final String name;
@@ -21,4 +23,8 @@ class OfficeDocument {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final int? sizeBytes;
+  final bool legacyDoc;
+  final String? sourceHash;
+  String get editorName =>
+      legacyDoc ? '${name.substring(0, name.length - 4)}.docx' : name;
 }

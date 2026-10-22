@@ -8,8 +8,10 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../documents/domain/office_document.dart';
 import '../../documents/domain/document_repository.dart';
 import '../../documents/data/local_document_repository.dart';
-import '../../documents/data/docx_file_picker.dart';
+import '../../documents/data/document_file_picker.dart';
+import '../../pdf/presentation/pdf_viewer_page.dart';
 import '../../documents/data/android_document_files.dart';
+import '../../documents/data/legacy_doc_converter.dart';
 import '../data/editor_asset_server.dart';
 import '../data/document_recovery_store.dart';
 import '../data/webview_document_editor_bridge.dart';
@@ -27,7 +29,7 @@ class MobileDocxEditorPage extends StatefulWidget {
     this.onReady,
     this.documents,
     this.onBridgeCreated,
-    this.pickDocument = pickDocxFile,
+    this.pickDocument = pickOfficeFile,
   });
   final OfficeDocument document;
   final DocumentRecoveryStore? recoveryStore;
@@ -109,8 +111,16 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     String? sourceUri = _currentDocument.sourceUri;
     if (Platform.isAndroid && sourceUri == null) {
       if (mounted) setState(() => _status = 'Chọn file gốc để lưu thay đổi');
-      final target = await const AndroidDocumentFiles().pick();
+      final target = await const AndroidDocumentFiles().pick(
+        allDocuments: _currentDocument.legacyDoc,
+      );
       if (target == null) throw StateError('Chưa lưu: bạn chưa chọn file gốc.');
+      if (_currentDocument.legacyDoc &&
+          !target.name.toLowerCase().endsWith('.doc')) {
+        throw StateError(
+          'Hãy chọn file DOC gốc, hoặc dùng Lưu thành bản mới để xuất DOCX.',
+        );
+      }
       sourceUri = target.sourceUri;
     }
     final saved = await _documents.updateDocx(
@@ -119,10 +129,10 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       sourceUri: sourceUri,
     );
     await _clearRecoveryAfterSave(previousId);
-    _baseHash = DocumentRecoveryStore.hash(bytes);
+    _baseHash = saved.sourceHash ?? DocumentRecoveryStore.hash(bytes);
     _sourceConflict = false;
     _currentDocument = saved;
-    return EditorSaveResult(name: saved.name, path: saved.filePath!);
+    return EditorSaveResult(name: saved.editorName, path: saved.filePath!);
   }
 
   Future<EditorSaveResult> _persistNewCopy(String name, Uint8List bytes) async {
@@ -165,7 +175,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       widget.onSaved?.call(result);
       if (mounted) {
         setState(() {
-          _name = result.name;
+          _name = _currentDocument.name;
           _status = _currentDocument.sourceUri != null
               ? 'Đã lưu vào file gốc: $_name'
               : 'Đã lưu $_name';
@@ -291,12 +301,18 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     } catch (_) {
       if (pending == null) rethrow;
     }
-    final bytes = pending == null ? original! : await pending.read();
+    final bytes = pending != null
+        ? await pending.read()
+        : document.legacyDoc && document.sourceUri != null
+        ? await const LegacyDocConverter().toDocx(original!)
+        : original!;
     final sourceHash = original == null
         ? null
+        : document.legacyDoc && document.sourceUri == null
+        ? document.sourceHash ?? DocumentRecoveryStore.hash(original)
         : DocumentRecoveryStore.hash(original);
     await _bridge!.open(
-      EditorDocument(id: document.id, name: document.name, bytes: bytes),
+      EditorDocument(id: document.id, name: document.editorName, bytes: bytes),
       recovered: pending != null,
     );
     _currentDocument = document;
@@ -442,14 +458,33 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     final file = await widget.pickDocument();
     if (file == null) return;
     if (await file.length() > EditorAssetServer.maxDocumentBytes) {
-      throw StateError('DOCX vượt giới hạn 20 MB');
+      throw StateError('Tài liệu vượt giới hạn 20 MB');
     }
     if (!await _confirmDiscard()) return;
     final bytes = await file.readAsBytes();
+    final sourceUri = file is SourceDocxFile ? file.sourceUri : null;
+    if (file.name.toLowerCase().endsWith('.pdf')) {
+      final pdf = await _documents.storePdf(
+        file.name,
+        bytes,
+        sourceUri: sourceUri,
+      );
+      await _recovery.clear(_currentDocument.id);
+      if (!mounted) return;
+      _checkpointTimer?.cancel();
+      setState(() => _allowPop = true);
+      unawaited(
+        Navigator.of(context).pushReplacement<void, void>(
+          MaterialPageRoute(builder: (_) => PdfViewerPage(document: pdf)),
+        ),
+      );
+      return;
+    }
     final document = await _documents.storeDocx(
       file.name,
       bytes,
-      sourceUri: file is SourceDocxFile ? file.sourceUri : null,
+      sourceUri: sourceUri,
+      legacyDoc: file.name.toLowerCase().endsWith('.doc'),
     );
     final previousId = _currentDocument.id;
     if (!await _loadDocument(
@@ -507,7 +542,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
         actions: [
           IconButton(
             key: const Key('open-docx'),
-            tooltip: 'Mở DOCX',
+            tooltip: 'Mở tài liệu',
             onPressed: _working || _error != null ? null : _pick,
             icon: const Icon(Icons.folder_open),
           ),

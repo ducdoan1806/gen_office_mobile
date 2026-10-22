@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
     private var pending: MethodChannel.Result? = null
     private var creating = false
     private var openingPdf = false
+    private var openingAll = false
     private val accessFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     private val maxBytes = 32 * 1024 * 1024
 
@@ -34,6 +35,19 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/document_files")
             .setMethodCallHandler(::handleDocumentCall)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/doc_conversion")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "convert") result.notImplemented()
+                else if (!java.io.File(applicationInfo.nativeLibraryDir, "liblo-native-code.so").isFile) {
+                    result.error("unsupported_abi", "Bản chuyển đổi DOC hiện hỗ trợ Android ARM64 và x86_64.", null)
+                }
+                else background(result, "Không chuyển đổi được DOC. File gốc chưa được ghi thay đổi. Hãy kiểm tra file không bị hỏng hoặc có mật khẩu.") {
+                    DocConversionClient(applicationContext).convert(
+                        requireNotNull(call.argument<ByteArray>("bytes")),
+                        requireNotNull(call.argument<String>("target"))
+                    )
+                }
+            }
     }
 
     internal fun handleDocumentCall(call: MethodCall, result: MethodChannel.Result) {
@@ -44,9 +58,11 @@ class MainActivity : FlutterActivity() {
                 } else {
                     creating = call.method == "create"
                     openingPdf = !creating && call.argument<String>("format") == "pdf"
+                    openingAll = !creating && call.argument<String>("format") == "all"
                     val intent = Intent(if (creating) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
-                        type = if (openingPdf) "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        type = if (openingAll) "*/*" else if (openingPdf) "application/pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
                         addFlags((if (openingPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags) or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                         if (creating) putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "document.docx")
                     call.argument<String>("initialUri")?.let {
@@ -95,13 +111,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun background(result: MethodChannel.Result, action: () -> Any?) {
+    private fun background(result: MethodChannel.Result, failureMessage: String? = null, action: () -> Any?) {
         io.execute {
             try {
                 val value = action()
                 main.post { result.success(value) }
             } catch (error: Exception) {
-                main.post { result.error("source_file", "Không truy cập/lưu được file gốc. Nếu file đã bị di chuyển hoặc mất quyền, hãy chọn mở lại file.", null) }
+                main.post { result.error("source_file", failureMessage ?: "Không truy cập/lưu được file gốc. Nếu file đã bị di chuyển hoặc mất quyền, hãy chọn mở lại file.", null) }
             }
         }
     }
@@ -116,16 +132,18 @@ class MainActivity : FlutterActivity() {
         if (resultCode != Activity.RESULT_OK || uri == null) { result.success(null); return }
         val isNew = creating
         val isPdf = openingPdf
+        val isAll = openingAll
         background(result) {
-            val granted = data.flags and accessFlags
-            val required = if (isPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags
-            require(granted and required == required) { "File thiếu quyền truy cập cần thiết." }
-            contentResolver.takePersistableUriPermission(uri, granted and required)
             var name = "document.docx"
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) name = cursor.getString(0)
             }
-            require(name.endsWith(if (isPdf) ".pdf" else ".docx", ignoreCase = true)) { "Loại file không hợp lệ." }
+            val extension = name.substringAfterLast('.', "").lowercase()
+            require(if (isAll) extension in listOf("docx", "pdf", "doc") else extension == if (isPdf) "pdf" else "docx") { "Loại file không hợp lệ." }
+            val granted = data.flags and accessFlags
+            val required = if (extension == "pdf") Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags
+            require(granted and required == required) { "File thiếu quyền truy cập cần thiết." }
+            contentResolver.takePersistableUriPermission(uri, granted and required)
             mapOf("uri" to uri.toString(), "name" to name, "bytes" to if (isNew) ByteArray(0) else read(uri))
         }
     }

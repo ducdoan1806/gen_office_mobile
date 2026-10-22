@@ -2,14 +2,14 @@
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
-Hiện đã tích hợp DOCX trên Android: mở file, sửa văn bản/định dạng/bảng, undo/redo và lưu trực tiếp file gốc trên Android. Có PDF viewer offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX và PPTX chưa tích hợp editor thực tế. Ưu tiên Android; phát triển và kiểm thử iOS hiện tạm hoãn.
+Android có một nút **Mở tài liệu** cho DOCX, DOC và PDF. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF có viewer offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX/PPTX chưa tích hợp thực tế. Ưu tiên Android; iOS hiện tạm hoãn.
 
 ## 1. Chuẩn bị môi trường
 
 Cài các công cụ sau trên máy phát triển:
 
 - **Git** để clone source.
-- **Flutter SDK 3.35.3** (kèm **Dart 3.9.2**): đây là phiên bản đã dùng để build và kiểm thử dự án. Nếu dùng Flutter mới hơn, cần kiểm tra tương thích dependency.
+- **Flutter SDK 3.47.7 / Dart 3.13.5**: môi trường kiểm thử Android ngày 22/10/2026. Kết quả iOS cũ dùng Flutter 3.35.3 được ghi riêng trong docs/ios-build.md.
 - **Android Studio**, Android SDK và một Android emulator hoặc điện thoại Android bật USB debugging.
 - Để build iOS: cần **macOS, Xcode và CocoaPods**. Dự án đặt deployment target **iOS 15.0 trở lên**, đồng bộ với Xcode 27. Đã kiểm thử luồng DOCX trên iPhone Simulator iOS 27; iPhone thật vẫn cần thiết lập signing và kiểm thử riêng.
 
@@ -37,6 +37,14 @@ flutter pub get
 
 Giữ nguyên `pubspec.lock` và `editor_web/package-lock.json` để dependency có thể được cài lặp lại. Không cần chạy `flutter create` lại hoặc copy thư mục build từ máy khác.
 
+Chuẩn bị runtime DOC native một lần trước khi build Android (Windows/PowerShell; tải khoảng 174 MiB, kiểm SHA-256):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tool/setup_office_runtime.ps1
+```
+
+Runtime ARM64/x86_64 được lưu trong `android/office-runtime/` đã gitignore và được đóng gói vào APK. Chuyển đổi trên điện thoại không tải thêm thư viện, không cần máy chủ; APK lớn hơn do có LibreOfficeKit. Xem [DOC offline](docs/legacy-doc.md).
+
 ## 3. Chạy app trên Android
 
 Mở Android Studio → **Device Manager**, tạo và khởi động emulator. Hoặc kết nối điện thoại đã bật USB debugging và chấp nhận quyền debug trên điện thoại.
@@ -63,19 +71,19 @@ Nếu chỉ kết nối một thiết bị phù hợp, có thể dùng `flutter 
 
 ### Thử chỉnh sửa DOCX
 
-1. Bấm **Mở DOCX**, chọn file trong Downloads hoặc thư mục khác bằng trình chọn tệp Android.
-2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn file `.docx` khác từ thiết bị.
+1. Bấm **Mở tài liệu**, chọn file trong Downloads hoặc thư mục khác bằng trình chọn tệp Android.
+2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn DOCX/DOC/PDF khác từ thiết bị; app tự mở đúng màn hình và hỏi nếu có thay đổi chưa lưu.
 3. Chỉnh sửa trong editor; thanh menu có thể cuộn ngang và nhãn không xuống dòng.
 4. Dùng các nút **undo/redo** để hoàn tác/làm lại.
 5. Bấm biểu tượng **lưu** để cập nhật chính file đã chọn. Dòng trạng thái xác nhận lưu vào file gốc khi ghi và đọc lại xác minh thành công.
 
-Android giữ quyền đọc/ghi của file đã chọn qua Storage Access Framework. Danh sách gần đây lưu liên kết đến file gốc; khi mở lại, app đọc nội dung từ file đó. Các bản sao được nhập bằng phiên bản cũ cần mở lại file gốc bằng **Mở DOCX**, hoặc chọn lại file gốc ở lần Lưu đầu tiên. **Lưu thành bản mới** mở trình chọn nơi lưu của Android. iOS/macOS vẫn dùng cơ chế bản sao riêng; share sheet chưa triển khai.
+Android giữ quyền đọc/ghi của file đã chọn qua Storage Access Framework. Danh sách gần đây lưu liên kết đến file gốc; khi mở lại, app đọc nội dung từ file đó. Các bản sao được nhập bằng phiên bản cũ cần mở lại file gốc bằng **Mở tài liệu**, hoặc chọn lại file gốc ở lần Lưu đầu tiên. **Lưu thành bản mới** mở trình chọn nơi lưu của Android. iOS/macOS vẫn dùng cơ chế bản sao riêng; share sheet chưa triển khai.
 
 App tạo bản tạm cho DOCX đang sửa khoảng mỗi 5 giây. Nếu app bị đóng đột ngột, mở lại sẽ có mục **Khôi phục** để tiếp tục từ bản tạm gần nhất; bấm **Lưu** để cập nhật file gốc. Xem [khôi phục phiên](docs/session-recovery.md) về giới hạn và kiểm thử.
 
 ### Thử đọc PDF trên Android
 
-Bấm **Mở PDF** ở thanh trên màn hình chính, chọn PDF trong điện thoại (tối đa 20 MB). Dùng trang trước/sau hoặc nhập số trang; nhập chữ và bấm **Tìm**, dùng ↑/↓ để chuyển kết quả. Có nút phóng to/thu nhỏ/vừa trang. File xuất hiện trong danh sách gần đây và được mở lại từ nguồn. PDF chỉ đọc; file scan không có lớp text chưa tìm chữ được, file có mật khẩu chưa hỗ trợ. Xem [PDF viewer](docs/pdf-viewer.md).
+Bấm nút chung **Mở tài liệu**, chọn PDF trong điện thoại (tối đa 20 MB). Dùng trang trước/sau hoặc nhập số trang; nhập chữ và bấm **Tìm**, dùng ↑/↓ để chuyển kết quả. Có nút phóng to/thu nhỏ/vừa trang. File xuất hiện trong danh sách gần đây và được mở lại từ nguồn. PDF chỉ đọc; file scan không có lớp text chưa tìm chữ được, file có mật khẩu chưa hỗ trợ. Xem [PDF viewer](docs/pdf-viewer.md).
 
 ## 4. Build APK và cài lên điện thoại
 

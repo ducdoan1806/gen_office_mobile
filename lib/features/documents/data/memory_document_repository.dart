@@ -23,6 +23,7 @@ class MemoryDocumentRepository implements DocumentRepository {
     String name,
     Uint8List bytes, {
     bool isExport = false,
+    bool legacyDoc = false,
     String? sourceUri,
   }) async =>
       throw UnsupportedError('Demo repository does not persist documents.');

@@ -42,7 +42,7 @@ void main() {
             documents: repository,
             ai: MockFactoryAiService(),
           ),
-          pickPdf: () async => SourceDocxFile(
+          pickDocument: () async => SourceDocxFile(
             Uint8List.fromList([37, 80, 68, 70, 45]),
             'Safety.pdf',
             'content://test/pdf',
@@ -51,7 +51,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('import-pdf')));
+    expect(find.text('Mở tài liệu'), findsOneWidget);
+    expect(find.text('Mở PDF'), findsNothing);
+    expect(find.text('Mở DOCX'), findsNothing);
+    await tester.tap(find.byKey(const Key('open-document')));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(PdfViewerPage), findsOneWidget);

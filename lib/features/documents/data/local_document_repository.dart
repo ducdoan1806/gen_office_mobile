@@ -5,6 +5,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
+import 'legacy_doc_converter.dart';
 
 import '../domain/document_repository.dart';
 import 'android_document_files.dart';
@@ -16,12 +18,15 @@ class LocalDocumentRepository implements DocumentRepository {
   LocalDocumentRepository({
     Future<Directory> Function()? documentsDirectory,
     AndroidDocumentFiles sourceFiles = const AndroidDocumentFiles(),
+    LegacyDocConverter converter = const LegacyDocConverter(),
   }) : _sourceFiles = sourceFiles,
+       _converter = converter,
        _documentsDirectory =
            documentsDirectory ?? getApplicationDocumentsDirectory;
 
   final Future<Directory> Function() _documentsDirectory;
   final AndroidDocumentFiles _sourceFiles;
+  final LegacyDocConverter _converter;
   static const maxImportBytes = 20 * 1024 * 1024;
   static const maxExportBytes = 32 * 1024 * 1024;
   static final _idPattern = RegExp(r'^[a-f0-9]{32}$');
@@ -75,6 +80,8 @@ class LocalDocumentRepository implements DocumentRepository {
           (data['updatedAt'] ?? data['createdAt']) as String,
         ),
         sizeBytes: data['sizeBytes'] as int,
+        legacyDoc: data['legacyDoc'] == true,
+        sourceHash: data['sourceHash'] as String?,
       );
 
   Future<Directory> _root() async =>
@@ -138,12 +145,13 @@ class LocalDocumentRepository implements DocumentRepository {
     String name,
     Uint8List bytes, {
     bool isExport = false,
+    bool legacyDoc = false,
     String? sourceUri,
   }) async {
     // The display name is never used as a filesystem path.
     name = name.split(RegExp(r'[/\\]')).last.trim();
-    if (!name.toLowerCase().endsWith('.docx') ||
-        name.length <= 5 ||
+    if (!name.toLowerCase().endsWith(legacyDoc ? '.doc' : '.docx') ||
+        name.length <= (legacyDoc ? 4 : 5) ||
         name.contains(RegExp(r'[\x00-\x1f]'))) {
       throw ArgumentError('Tên tài liệu DOCX không hợp lệ.');
     }
@@ -155,7 +163,25 @@ class LocalDocumentRepository implements DocumentRepository {
     }
     if (sourceUri != null) {
       for (final existing in await list()) {
-        if (existing.sourceUri == sourceUri) return existing;
+        if (existing.sourceUri == sourceUri &&
+            existing.format == DocumentFormat.docx &&
+            existing.legacyDoc == legacyDoc) {
+          return existing;
+        }
+      }
+    }
+    final sourceLength = bytes.length;
+    final originalDoc = legacyDoc ? bytes : null;
+    final sourceHash = legacyDoc ? sha256.convert(bytes).toString() : null;
+    if (legacyDoc) {
+      bytes = await _converter.toDocx(bytes);
+      if (bytes.length > maxExportBytes ||
+          bytes.length < 4 ||
+          bytes[0] != 80 ||
+          bytes[1] != 75) {
+        throw StateError(
+          'Kết quả chuyển DOC sang DOCX không hợp lệ hoặc vượt 32 MB.',
+        );
       }
     }
     final id = _newId();
@@ -167,6 +193,11 @@ class LocalDocumentRepository implements DocumentRepository {
     await staging.create();
     try {
       final createdAt = DateTime.now().toUtc();
+      if (originalDoc != null) {
+        await File(
+          '${staging.path}/original-source.doc',
+        ).writeAsBytes(originalDoc, flush: true);
+      }
       await File(
         '${staging.path}/content.docx',
       ).writeAsBytes(bytes, flush: true);
@@ -176,10 +207,12 @@ class LocalDocumentRepository implements DocumentRepository {
           'id': id,
           'name': name,
           'format': 'docx',
+          if (legacyDoc) 'legacyDoc': true,
+          if (sourceHash != null) 'sourceHash': sourceHash,
           if (sourceUri != null) 'sourceUri': sourceUri,
           'createdAt': createdAt.toIso8601String(),
           'updatedAt': createdAt.toIso8601String(),
-          'sizeBytes': bytes.length,
+          'sizeBytes': sourceLength,
         }),
         flush: true,
       );
@@ -192,7 +225,9 @@ class LocalDocumentRepository implements DocumentRepository {
         sourceUri: sourceUri,
         createdAt: createdAt,
         updatedAt: createdAt,
-        sizeBytes: bytes.length,
+        sizeBytes: sourceLength,
+        legacyDoc: legacyDoc,
+        sourceHash: sourceHash,
       );
     } catch (_) {
       if (await staging.exists()) await staging.delete(recursive: true);
@@ -234,6 +269,12 @@ class LocalDocumentRepository implements DocumentRepository {
       if (data['format'] != 'docx') throw StateError('PDF chỉ hỗ trợ xem.');
       final oldContent = _contentFile(data);
       final revision = _newId();
+      final sourceBytes = data['legacyDoc'] == true
+          ? await _converter.toDoc(bytes)
+          : bytes;
+      if (sourceBytes.length > maxExportBytes || sourceBytes.isEmpty) {
+        throw StateError('Kết quả chuyển đổi vượt giới hạn 32 MB.');
+      }
       final content = File('${directory.path}/content-$revision.docx');
       final metadata = File('${directory.path}/.document-$revision.tmp');
       final updated = <String, dynamic>{
@@ -241,13 +282,15 @@ class LocalDocumentRepository implements DocumentRepository {
         if (sourceUri != null) 'sourceUri': sourceUri,
         'contentFile': 'content-$revision.docx',
         'updatedAt': DateTime.now().toUtc().toIso8601String(),
-        'sizeBytes': bytes.length,
+        'sizeBytes': sourceBytes.length,
+        if (data['legacyDoc'] == true)
+          'sourceHash': sha256.convert(sourceBytes).toString(),
       };
       try {
         await content.writeAsBytes(bytes, flush: true);
         await metadata.writeAsString(jsonEncode(updated), flush: true);
         final target = updated['sourceUri'] as String?;
-        if (target != null) await _sourceFiles.write(target, bytes);
+        if (target != null) await _sourceFiles.write(target, sourceBytes);
         // The current bytes stay readable until this final pointer replacement.
         await metadata.rename('${directory.path}/document.json');
       } catch (_) {

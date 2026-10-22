@@ -107,7 +107,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('import-docx')));
+      await tester.tap(find.byKey(const Key('open-document')));
       await pumpUntil(tester, () {
         final save = find.byKey(const Key('save-docx'));
         return save.evaluate().isNotEmpty &&
@@ -125,7 +125,7 @@ void main() {
       await pumpUntil(
         tester,
         () =>
-            find.byKey(const Key('import-docx')).evaluate().isNotEmpty &&
+            find.byKey(const Key('open-document')).evaluate().isNotEmpty &&
             find.byType(WebViewWidget).evaluate().isEmpty,
       );
       await tester.pumpAndSettle();

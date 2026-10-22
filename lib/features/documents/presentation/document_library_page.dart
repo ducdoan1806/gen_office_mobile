@@ -4,8 +4,7 @@ import '../../../app/dependencies.dart';
 import '../../editor/presentation/document_editor_page.dart';
 import '../../editor/presentation/mobile_docx_editor_page.dart';
 import '../domain/office_document.dart';
-import '../data/docx_file_picker.dart';
-import '../data/pdf_file_picker.dart';
+import '../data/document_file_picker.dart';
 import '../../pdf/presentation/pdf_viewer_page.dart';
 import '../data/android_document_files.dart';
 import '../../editor/data/document_recovery_store.dart';
@@ -17,8 +16,7 @@ class DocumentLibraryPage extends StatefulWidget {
   const DocumentLibraryPage({
     super.key,
     required this.dependencies,
-    this.pickDocument = pickDocxFile,
-    this.pickPdf = pickPdfFile,
+    this.pickDocument = pickOfficeFile,
     this.recoveryStore,
     this.onBridgeCreated,
   });
@@ -26,7 +24,6 @@ class DocumentLibraryPage extends StatefulWidget {
   final DocumentRecoveryStore? recoveryStore;
   final ValueChanged<WebViewDocumentEditorBridge>? onBridgeCreated;
   final Future<XFile?> Function() pickDocument;
-  final Future<XFile?> Function() pickPdf;
   @override
   State<DocumentLibraryPage> createState() => _DocumentLibraryPageState();
 }
@@ -71,32 +68,42 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     if (mounted) _reload();
   }
 
-  Future<void> _import({bool pdf = false}) async {
+  Future<void> _import() async {
     if (_importing) return;
     setState(() => _importing = true);
     try {
-      final file = await (pdf ? widget.pickPdf() : widget.pickDocument());
+      final file = await widget.pickDocument();
       if (file == null) return;
+      final name = file.name.toLowerCase();
+      final pdf = name.endsWith('.pdf');
+      final legacyDoc = name.endsWith('.doc');
+      if (!pdf && !legacyDoc && !name.endsWith('.docx')) {
+        throw StateError('Định dạng file chưa được hỗ trợ.');
+      }
       if (await file.length() > LocalDocumentRepository.maxImportBytes) {
         throw StateError('Tài liệu vượt giới hạn 20 MB.');
       }
-      final store = pdf
-          ? widget.dependencies.documents.storePdf
-          : widget.dependencies.documents.storeDocx;
-      final document = await store(
-        file.name,
-        await file.readAsBytes(),
-        sourceUri: file is SourceDocxFile ? file.sourceUri : null,
-      );
+      final bytes = await file.readAsBytes();
+      final uri = file is SourceDocxFile ? file.sourceUri : null;
+      final document = pdf
+          ? await widget.dependencies.documents.storePdf(
+              file.name,
+              bytes,
+              sourceUri: uri,
+            )
+          : await widget.dependencies.documents.storeDocx(
+              file.name,
+              bytes,
+              sourceUri: uri,
+              legacyDoc: legacyDoc,
+            );
       if (!mounted) return;
       _reload();
       await _open(document);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Không mở được ${pdf ? 'PDF' : 'DOCX'}: $error'),
-          ),
+          SnackBar(content: Text('Không mở được tài liệu: $error')),
         );
       }
     } finally {
@@ -109,12 +116,6 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
     appBar: AppBar(
       title: const Text('GenOffice Mobile'),
       actions: [
-        TextButton.icon(
-          key: const Key('import-pdf'),
-          onPressed: _importing ? null : () => _import(pdf: true),
-          icon: const Icon(Icons.picture_as_pdf_outlined),
-          label: const Text('Mở PDF'),
-        ),
         IconButton(
           onPressed: _reload,
           tooltip: 'Tải lại',
@@ -123,7 +124,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
       ],
     ),
     floatingActionButton: FloatingActionButton.extended(
-      key: const Key('import-docx'),
+      key: const Key('open-document'),
       onPressed: _importing ? null : () => _import(),
       icon: _importing
           ? const SizedBox(
@@ -132,7 +133,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               child: CircularProgressIndicator(),
             )
           : const Icon(Icons.add),
-      label: const Text('Mở DOCX'),
+      label: const Text('Mở tài liệu'),
     ),
     body: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -179,7 +180,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
               final documents = snapshot.data!;
               if (documents.isEmpty) {
                 return const Center(
-                  child: Text('Chưa có tài liệu. Nhấn “Mở DOCX” để thêm.'),
+                  child: Text('Chưa có tài liệu. Nhấn “Mở tài liệu” để thêm.'),
                 );
               }
               return ListView.builder(
@@ -196,7 +197,9 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                     title: Text(document.name),
                     subtitle: Text(
                       [
-                        document.format.name.toUpperCase(),
+                        document.legacyDoc
+                            ? 'DOC'
+                            : document.format.name.toUpperCase(),
                         document.sourceUri != null
                             ? 'File gốc'
                             : 'Bản trong app',
