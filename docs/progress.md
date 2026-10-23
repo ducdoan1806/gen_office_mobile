@@ -136,3 +136,9 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] Đổi tên hiển thị Android và tiêu đề màn hình chính thành **VPIC1 Office**; dùng icon do chủ dự án cung cấp cho launcher và trang Giới thiệu. Giữ applicationId và phiên bản 1.0.0+1.
 - [x] Thêm nút **ⓘ Giới thiệu** tại màn hình chính: mô tả nội bộ đã duyệt, đơn vị VPIC1, nền tảng Android, phiên bản/bản dựng đọc từ APK và giấy phép phần mềm. Bỏ các thông tin liên hệ còn là placeholder theo yêu cầu.
 - [x] Analyze và 51 test Flutter đạt; build APK debug ARM64 thành công. Cài APK thường bằng `adb install -r`, kiểm tra trực tiếp tên, icon, nội dung Giới thiệu, cuộn trang và phiên bản **1.0.0 (bản dựng 1)** trên Samsung SM-A075F/Android 16. Không chạy integration test thiết bị cho thay đổi nhận diện này.
+
+### Bo góc logo và màn hình khởi động — 23/10/2026
+
+- [x] Tách splash khỏi launcher icon: logo bo góc 25% trên nền sáng cùng màu app; Android 12+ dùng splash native với vùng an toàn và tên VPIC1 Office phía dưới, Android 7–11 dùng layer-list tương ứng. Không thêm thời gian chờ khởi động.
+- [x] Thêm Adaptive Icon cho Android 8+ để launcher áp mask theo thiết bị; icon legacy Android 7 bo góc, trang Giới thiệu bo góc 25%. Script tạo lại đầy đủ PNG từ icon nguồn, giữ nguyên file gốc.
+- [x] Analyze và build APK debug ARM64 đạt; cài bằng `adb install -r`, cold launch trên Samsung SM-A075F/Android 16 và chụp kiểm tra splash thực tế: logo bo góc, không bị cắt, có tên ứng dụng. Android 7–11 chưa kiểm tra trực tiếp trong đợt này.

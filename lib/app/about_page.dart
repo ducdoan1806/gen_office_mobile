@@ -22,7 +22,7 @@ class _AboutPageState extends State<AboutPage> {
         children: [
           Center(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               child: Image.asset(
                 AppBranding.icon,
                 width: 96,
