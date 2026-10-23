@@ -1,4 +1,8 @@
 html[data-host="mobile"] body {overscroll-behavior:none;min-width:0;}
+/* Native controls own save/copy and history; PDF is read-only. */
+html[data-host="mobile"] .ribbon-tabs .qa-btn,
+html[data-host="mobile"] .ribbon-tabs .autosave-toggle,
+html[data-host="mobile"] .ribbon-tabs .qa-sep {display:none!important;}
 html[data-host="mobile"] .ribbon-tabs {overflow-x:auto;flex-wrap:nowrap;white-space:nowrap;touch-action:pan-x;min-height:44px;}
 html[data-host="mobile"] .ribbon-tabs > * {flex-shrink:0;}
 html[data-host="mobile"] .ribbon-tab {white-space:nowrap;min-height:40px;}

@@ -174,7 +174,7 @@ flutter test
 Kiểm thử WebView thực tế trên Android emulator:
 
 ```sh
-flutter test integration_test/docx_webview_test.dart -d <device-id> --reporter expanded
+flutter test integration_test/docx_webview_test.dart -d <device-id> --no-uninstall --reporter expanded
 ```
 
 Kiểm thử editor web (cần cài dependency bằng `npm ci` trước):

@@ -46,7 +46,7 @@ flutter run -d <ios-simulator-id>
 Open ios/Runner.xcworkspace when building in Xcode so CocoaPods is included. Commit Podfile.lock for reproducible dependency resolution.
 
 ```sh
-flutter test integration_test/docx_webview_test.dart -d <ios-simulator-id> --reporter expanded
+flutter test integration_test/docx_webview_test.dart --no-uninstall -d <ios-simulator-id> --reporter expanded
 flutter build ios --release --no-codesign
 ```
 

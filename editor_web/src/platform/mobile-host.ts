@@ -35,14 +35,14 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
    send({type:'ready',protocol:1});
  });
  const invokeRenderer = (command: Command) => new Promise<unknown>((resolve,reject)=>{
-   const timer=setTimeout(()=>{pending.delete(command.id);queued.delete(command.id);reject(new Error('Renderer command timed out'));},command.method==='save'?600000:45000);
+   const timer=setTimeout(()=>{pending.delete(command.id);queued.delete(command.id);reject(new Error('Renderer command timed out'));},(command.method==='save'||command.method==='saveAs')?600000:45000);
    pending.set(command.id,{resolve,reject,timer});
    if(rendererReady)dispatch(command);else queued.set(command.id,command);
  });
  win.genOfficeMobile = {async receive(command) {
    try {
      if (!command || typeof command.id !== 'string') throw new Error('Invalid command');
-     if (!['open','save','undo','redo','status','new','snapshot'].includes(command.method)) throw new Error('Unsupported command');
+     if (!['open','save','saveAs','undo','redo','status','new','snapshot'].includes(command.method)) throw new Error('Unsupported command');
      if(command.method==='open') {
        const args=command.args!;
        command={...command,args:{file:{path:`mobile://${String(args.documentId)}`,name:String(args.name),dataUrl:localUrl(args.url),hash:'',recovered:args.recovered===true}}};

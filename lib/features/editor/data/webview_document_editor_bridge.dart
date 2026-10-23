@@ -90,7 +90,7 @@ class WebViewDocumentEditorBridge implements DocumentEditorBridge {
     final payload = jsonEncode({'id': id, 'method': method, 'args': args});
     // Payload is serialized JSON data, never interpolated executable source.
     final response = completer.future.timeout(
-      Duration(seconds: method == 'save' ? 600 : 50),
+      Duration(seconds: method == 'save' || method == 'saveAs' ? 600 : 50),
     );
     try {
       try {
@@ -121,9 +121,13 @@ class WebViewDocumentEditorBridge implements DocumentEditorBridge {
       await _command('snapshot', {'documentId': documentId}) == true;
 
   @override
-  Future<EditorSaveResult> save() async {
+  Future<EditorSaveResult> save() => _save('save');
+
+  Future<EditorSaveResult> saveAs() => _save('saveAs');
+
+  Future<EditorSaveResult> _save(String method) async {
     final revision = server.saveRevision;
-    await _command('save');
+    await _command(method);
     if (server.saveRevision == revision || server.lastSave == null) {
       throw StateError('Không nhận được tài liệu đã lưu');
     }

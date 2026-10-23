@@ -76,3 +76,11 @@ Codec CSV còn được kiểm tra UTF-8 BOM, UTF-16 LE/BE, quoting/xuống dòn
 23/10/2026: tái hiện trên Samsung SM-A075F, DPR 1,875. Điểm chạm B2 có client (148,27; 203,20), offset canvas gốc khoảng (148,27; 50,67), nhưng PointerEvent mouse được tạo lại cho offset khoảng (79,08; -44,16). Desktop Chromium ở bài test cũ không tái hiện lỗi scale này. `sheets-touch.ts` nay đặt offsetX/Y từ client trừ cạnh canvas trước khi chuyển sự kiện cho Univer.
 
 6 bài Playwright production đạt; bài mới mô phỏng offset sai của Android WebView và kiểm tra chọn ô, kéo vùng, sửa bằng chạm hai lần. APK thường đã được cài đè và kiểm tra qua Android input thật (tap, motionevent DOWN/giữ/MOVE/UP, swipe), đọc lại state qua CDP: B2 được chọn, vùng B2:C3 được chọn; cuộn dọc tới hàng bắt đầu 12 và ngang tới cột bắt đầu 2 vẫn giữ vùng B2:C3. Sau cùng trả viewport về đầu bảng, để vùng chọn hiện trên màn hình. Không nhập/sửa giá trị trong file dùng để kiểm tra trên điện thoại.
+
+### Gọn các nút lưu trùng trên mobile
+
+23/10/2026: ẩn nhóm Quick Access và AutoSave ở ribbon mobile, dùng Lưu trên AppBar Flutter, Lưu thành bản mới trong menu ba chấm và Undo/Redo ở hàng dưới. Bridge `saveAs` chạy handler Save As gốc của Docs/Sheets/Slides, giữ việc chốt nội dung đang nhập và chọn đích native. Không đổi cơ chế tạo bản tạm khôi phục.
+
+51 test Flutter, 8 web/engine, 7 Playwright production và analyze đạt. Các bài trình duyệt kiểm tra nút Quick Access/AutoSave không còn hiển thị, Save As gửi `mode=copy` cho cả DOCX/XLSX/PPTX; sửa, lưu và cảm ứng Excel vẫn đạt. Bộ Android 13 ca đạt trên Samsung SM-A075F/Android 16, gồm ca mở menu Flutter → Lưu thành bản mới → Lưu tiếp, đối chiếu số tài liệu và bản nguồn trước đó.
+
+Lưu ý quy trình kiểm thử: đã phát hiện `flutter test` ở Flutter SDK hiện tại mặc định gỡ app khi kết thúc (`uninstall=true`), khiến danh sách gần đây trong dữ liệu riêng bị reset ở lần này. File nguồn trong Downloads vẫn còn. Đã mở lại `GenOffice_Sheets_20261022_144503.xlsx` qua SAF để tạo lại liên kết đọc/ghi và mục gần đây. AGENTS.md và README nay bắt buộc `--no-uninstall` cho integration test trên thiết bị; không dùng việc gỡ app/clear data để kiểm thử. Sau cài APK thường, đã kiểm tra trực tiếp menu ba chấm và các tab không còn Quick Access trên Samsung.

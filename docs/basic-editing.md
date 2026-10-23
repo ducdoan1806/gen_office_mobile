@@ -36,7 +36,7 @@ Trong terminal thứ hai:
 
 ```powershell
 adb -s emulator-5554 reverse tcp:8943 tcp:8943
-flutter test integration_test/factory_docx_test.dart -d emulator-5554 --dart-define=GENOFFICE_TEST_CORPUS_URL=http://127.0.0.1:8943
+flutter test integration_test/factory_docx_test.dart --no-uninstall -d emulator-5554 --dart-define=GENOFFICE_TEST_CORPUS_URL=http://127.0.0.1:8943
 ```
 
 Mỗi tài liệu được mở, lưu nguyên trạng và so sánh từng phần ZIP với nguồn. Sau đó test thêm một dấu kiểm thử vào đoạn văn, lưu/mở lại và xác nhận các phần OOXML ngoài `word/document.xml` không đổi. Riêng `docProps/core.xml` cho phép thay đổi thời điểm lưu và số revision theo hành vi lưu tài liệu; các metadata khác vẫn được so sánh. File nguồn được giữ nguyên. Bản kết quả dùng tên số thứ tự; `manifest.json` ánh xạ sang tên nguồn và SHA-256. Chỉ server kiểm thử đọc nguồn; mọi chỉnh sửa diễn ra trên bản sao trong app.

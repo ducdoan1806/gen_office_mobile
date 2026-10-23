@@ -2315,6 +2315,9 @@ export function App() {
             case 'save':
               if (!(await save(false))) throw new Error('DOCX save failed')
               break
+            case 'saveAs':
+              if (!(await save(true))) throw new Error('DOCX save as failed')
+              break
             case 'undo': editor.chain().focus().undo().run(); break
             case 'redo': editor.chain().focus().redo().run(); break
             case 'new': await resetFile(); break

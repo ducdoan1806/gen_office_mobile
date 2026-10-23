@@ -608,13 +608,31 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
           ),
           IconButton(
             key: const Key('save-docx'),
-            tooltip: 'Lưu ${_currentDocument.format.name.toUpperCase()}',
+            tooltip: 'Lưu',
             onPressed: _working || _error != null
                 ? null
                 : () => _perform(() async {
                     await _bridge!.save();
                   }),
             icon: const Icon(Icons.save_outlined),
+          ),
+          PopupMenuButton<String>(
+            key: const Key('document-actions'),
+            tooltip: 'Thêm',
+            enabled: !_working && _error == null,
+            onSelected: (_) => _perform(() async {
+              await _bridge!.saveAs();
+            }),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'saveAs',
+                child: ListTile(
+                  leading: Icon(Icons.save_as_outlined),
+                  title: Text('Lưu thành bản mới'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),

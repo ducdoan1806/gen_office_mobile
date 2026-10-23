@@ -27,3 +27,5 @@ Additional snapshots: `sheets/src`, `slides/src`, `pdf/src`, `xlsx-gateway/src`,
 
 Mobile focus adaptation: Slides `file-actions.ts::flushActiveEdit` emits a mobile-only flush event and waits for the original overlay commit; `TextEditOverlay.tsx` handles it with its existing commit callback. This preserves pending text when Flutter controls take native focus without a DOM blur and prevents saving stale canvas content. The same path is used by manual Save and recovery snapshots.
 PDF mobile scroll tracking also recognizes the bottom scroll limit so a short, fitted last page can become the current page on narrow screens.
+
+Mobile toolbar cleanup (2026-10-23): scoped host CSS hides the duplicate Quick Access/autosave controls. Native `saveAs` dispatches the existing Docs `save(true)`, Sheets `handleSave('save-as')` and Slides `saveAs()` handlers; formatting and desktop toolbar behavior are retained.

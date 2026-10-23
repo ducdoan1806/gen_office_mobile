@@ -17,6 +17,7 @@ import 'package:gen_office_mobile/features/documents/data/android_document_files
 import 'package:gen_office_mobile/features/editor/data/document_recovery_store.dart';
 import 'package:gen_office_mobile/features/documents/presentation/document_library_page.dart';
 import 'package:gen_office_mobile/app/dependencies.dart';
+import 'factory_docx_test.dart' show withFrames;
 import 'package:gen_office_mobile/features/ai/data/mock_factory_ai_service.dart';
 
 Future<void> pumpUntil(WidgetTester tester, bool Function() predicate) async {
@@ -461,18 +462,24 @@ void main() {
       );
       expect(bXml, contains('bản B'));
       expect(bXml, isNot(contains('bản A')));
+      final copied = bridge.server.saved.first;
+      await tester.tap(find.byKey(const Key('document-actions')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lưu thành bản mới'));
+      await withFrames(
+        tester,
+        () => copied.timeout(const Duration(seconds: 30)),
+      );
       await tester.runAsync(() async {
-        final copied = bridge.server.saved.first;
-        await bridge.controller.runJavaScript(
-          'window.desktop.saveDocxAs("copy.docx",new Uint8Array(${jsonEncode(sourceBytes)}).buffer)',
-        );
-        await copied.timeout(const Duration(seconds: 15));
         expect(await repository.list(), hasLength(3));
         await bridge.save();
         final afterCopySave = await repository.list();
         expect(afterCopySave, hasLength(3));
         expect(
-          afterCopySave.where((document) => document.name == 'copy.docx'),
+          afterCopySave.where(
+            (document) =>
+                document.id != first.id && document.id != bDocument.id,
+          ),
           hasLength(1),
         );
         expect(await File(aDocument.filePath!).readAsBytes(), aBytes);

@@ -123,3 +123,10 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] Sửa tọa độ canvas của sự kiện PointerEvent được tạo từ touch. Trên Samsung DPR 1,875, WebView đã áp thêm page scale vào offsetX/offsetY, khiến điểm chạm rơi ra ngoài ô; bộ chuyển tiếp nay cung cấp offset theo CSS pixel của canvas.
 - [x] Thêm regression mô phỏng lỗi offset của WebView; 6 bài Playwright production đạt, gồm chạm chọn, giữ kéo vùng, chạm hai lần sửa và hồi quy cuộn/lưu.
 - [x] Cài APK thường bằng install -r và kiểm tra bằng input Android thật trên Samsung: chạm chọn B2, giữ rồi kéo chọn B2:C3, vuốt dọc/ngang giữ nguyên vùng chọn. Nghiệm thu cảm ứng/bàn phím toàn bộ ứng dụng trong bước 8 vẫn chưa hoàn tất.
+
+### Gọn các nút lưu trên mobile — 23/10/2026
+
+- [x] Ẩn Quick Access Save/Save As, Undo/Redo, AutoSave và dấu phân cách bị trùng trong ribbon DOCX/Sheets/Slides/PDF trên mobile. Giữ các tab và công cụ định dạng gốc; PDF tiếp tục chỉ đọc.
+- [x] Giữ một nút Lưu trên AppBar Flutter; thêm **⋮ → Lưu thành bản mới** cho DOCX/XLSX/PPTX và các file chuyển đổi tương ứng. Gọi pipeline Save As gốc, không đổi chức năng Lưu ghi đè nguồn. Hoàn tác/Làm lại giữ ở thanh Flutter dưới; bản tạm khôi phục nền vẫn hoạt động.
+- [x] 51 test Flutter, 8 test web/engine, 7 bài trình duyệt và analyze đạt; 13 ca Android đạt. Ca DOCX kiểm tra menu Flutter mới thực sự tạo bản sao, Lưu tiếp cập nhật bản đang mở và không nhân thêm mục thư viện.
+- Quy trình test: bắt buộc `--no-uninstall`; SDK hiện tại mặc định tự gỡ app khi kết thúc test. Đã ghi nhận việc reset danh sách gần đây ở lần này, mở lại file Excel gốc qua SAF và bổ sung quy định vào AGENTS.md/README. File nguồn vẫn còn trong Downloads.
