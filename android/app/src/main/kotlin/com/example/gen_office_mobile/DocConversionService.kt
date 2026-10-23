@@ -23,11 +23,11 @@ class DocConversionService : Service() {
             response.data = Bundle().apply {
                 try {
                     require(callerUid == applicationInfo.uid) { "Invalid caller" }
-                    convert(args.getString("job")!!, args.getString("target")!!)
+                    convert(args.getString("job")!!, args.getString("source") ?: if(args.getString("target") == "docx") "doc" else "docx", args.getString("target")!!)
                     putBoolean("ok", true)
                 } catch (error: Throwable) {
                     android.util.Log.e("GenOfficeConversion", "Offline conversion failed", error)
-                    putString("error", "Không chuyển đổi được DOC. File có thể hỏng, có mật khẩu hoặc không được hỗ trợ.")
+                    putString("error", "Không chuyển đổi được tài liệu Office. File có thể hỏng, có mật khẩu hoặc không được hỗ trợ.")
                 }
             }
             try { reply.send(response) } catch (_: RemoteException) { }
@@ -76,16 +76,22 @@ class DocConversionService : Service() {
         }
     }
 
-    private fun convert(jobId: String, target: String) {
-        require(jobId.matches(Regex("[a-f0-9-]{36}")) && target in listOf("doc", "docx"))
+    private fun convert(jobId: String, source: String, target: String) {
+        require(jobId.matches(Regex("[a-f0-9-]{36}")) && "$source:$target" in listOf("doc:docx", "docx:doc", "xls:xlsx", "xlsx:xls", "ppt:pptx", "pptx:ppt"))
         val root = File(cacheDir, "doc-conversion")
         val job = File(root, jobId).canonicalFile
         require(job.parentFile == root.canonicalFile)
-        val input = File(job, if (target == "docx") "input.doc" else "input.docx")
+        val input = File(job, "input.$source")
         val output = File(job, "output.$target")
         require(input.isFile && input.length() in 1..(32L * 1024 * 1024))
         val document = requireNotNull(engine().documentLoad(input.toURI().toASCIIString()))
         try {
+            val expectedType = when (source) {
+                "xls", "xlsx" -> 1
+                "ppt", "pptx" -> 2
+                else -> 0
+            }
+            require(document.documentType == expectedType) { "Sai loại tài liệu Office" }
             document.saveAs(output.toURI().toASCIIString(), target, "")
             require(output.isFile && output.length() in 1..(32L * 1024 * 1024))
         } finally { document.destroy() }

@@ -42,10 +42,11 @@ class MainActivity : FlutterActivity() {
                 else if (!java.io.File(applicationInfo.nativeLibraryDir, "liblo-native-code.so").isFile) {
                     result.error("unsupported_abi", "Bản chuyển đổi DOC hiện hỗ trợ Android ARM64 và x86_64.", null)
                 }
-                else background(result, "Không chuyển đổi được DOC. File gốc chưa được ghi thay đổi. Hãy kiểm tra file không bị hỏng hoặc có mật khẩu.") {
+                else background(result, "Không chuyển đổi được tài liệu Office. File gốc chưa được ghi thay đổi. Hãy kiểm tra file không bị hỏng hoặc có mật khẩu.") {
                     DocConversionClient(applicationContext).convert(
                         requireNotNull(call.argument<ByteArray>("bytes")),
-                        requireNotNull(call.argument<String>("target"))
+                        requireNotNull(call.argument<String>("target")),
+                        call.argument<String>("source") ?: if(call.argument<String>("target") == "docx") "doc" else "docx"
                     )
                 }
             }
@@ -59,13 +60,13 @@ class MainActivity : FlutterActivity() {
                 } else {
                     creating = call.method == "create"
                     openingExtension = if(creating) (call.argument<String>("name") ?: "document.docx").substringAfterLast('.').lowercase() else call.argument<String>("format") ?: "docx"
-                    require(openingExtension in listOf("docx","doc","pdf","xlsx","pptx","all"))
+                    require(openingExtension in listOf("docx","doc","pdf","xlsx","pptx","xls","ppt","csv","all"))
                     openingPdf = !creating && call.argument<String>("format") == "pdf"
                     openingAll = !creating && call.argument<String>("format") == "all"
                     val intent = Intent(if (creating) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
-                        type = when { openingAll -> "*/*"; openingExtension=="pdf" -> "application/pdf"; openingExtension=="xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; openingExtension=="pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"; else -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }
-                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"))
+                        type = when { openingExtension=="xls" -> "application/vnd.ms-excel"; openingExtension=="ppt" -> "application/vnd.ms-powerpoint"; openingExtension=="csv" -> "text/csv"; openingExtension=="doc" -> "application/msword"; openingAll -> "*/*"; openingExtension=="pdf" -> "application/pdf"; openingExtension=="xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; openingExtension=="pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"; else -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }
+                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/vnd.ms-excel", "application/vnd.ms-powerpoint", "text/csv", "text/comma-separated-values", "application/csv", "text/plain", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"))
                         addFlags((if (openingPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags) or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                         if (creating) putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "document.docx")
                     call.argument<String>("initialUri")?.let {
@@ -143,7 +144,7 @@ class MainActivity : FlutterActivity() {
                 if (cursor.moveToFirst()) name = cursor.getString(0)
             }
             val extension = name.substringAfterLast('.', "").lowercase()
-            require(if (isAll) extension in listOf("docx", "pdf", "doc", "xlsx", "pptx") else extension == expectedExtension) { "Loại file không hợp lệ." }
+            require(if (isAll) extension in listOf("docx", "pdf", "doc", "xlsx", "pptx", "xls", "ppt", "csv") else extension == expectedExtension) { "Loại file không hợp lệ." }
             val granted = data.flags and accessFlags
             val required = if (extension == "pdf") Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags
             require(granted and required == required) { "File thiếu quyền truy cập cần thiết." }

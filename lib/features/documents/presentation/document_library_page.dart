@@ -202,9 +202,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                     title: Text(document.name),
                     subtitle: Text(
                       [
-                        document.legacyDoc
-                            ? 'DOC'
-                            : document.format.name.toUpperCase(),
+                        document.sourceExtension.toUpperCase(),
                         document.sourceUri != null
                             ? 'File gốc'
                             : 'Bản trong app',

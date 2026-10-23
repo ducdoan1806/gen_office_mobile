@@ -109,3 +109,11 @@ Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã k
 Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
 Đây là tổng hợp kết quả kiểm thử đã ghi nhận; phạm vi và ngày kiểm chứng được ghi trong tài liệu từng tính năng. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md), [PDF viewer](pdf-viewer.md) và [build iOS](ios-build.md).
+
+## Bổ sung 23/10/2026: cảm ứng Excel và định dạng cũ
+
+- [x] Lưới Excel: vuốt ngang/dọc một ngón, khóa trục, quán tính; chạm chọn ô, chạm hai lần sửa, giữ rồi kéo chọn vùng. Dùng bộ cuộn/selection/editor gốc Univer.
+- [x] Mở/sửa/lưu XLS và PPT bằng chuyển đổi offline hai chiều trên Android; Lưu giữ định dạng và URI file nguồn, Save As xuất XLSX/PPTX. DOC tiếp tục dùng cùng runtime.
+- [x] Mở/sửa/lưu CSV bằng codec Unicode offline; giữ dấu phân cách/BOM/mã hóa, xử lý quoting/xuống dòng và mã có số 0 đầu. Lưu giá trị một sheet; cảnh báo giới hạn và yêu cầu Save As XLSX nếu có nhiều sheet.
+- Phạm vi/giới hạn: [XLS/PPT/CSV và thao tác cảm ứng](legacy-office-formats.md). Nghiệm thu thủ công và đối chiếu Office vẫn chưa hoàn thành; các hạng mục hoãn ở bước 5/iOS/AI giữ nguyên.
+- Kiểm chứng 23/10/2026: 51 unit/widget test Flutter, 8 test web/engine, 5 bài trình duyệt production và Dart analyze đều đạt. Bộ Android tổng hợp đạt **13 ca** trên Samsung SM-A075F/Android 16/ARM64: XLSX, PPTX, XLS, PPT, CSV; 3 PDF; 4 DOCX; DOC offline. Xem [QA máy thật](android-device-qa.md).

@@ -8,3 +8,4 @@ html[data-host="mobile"] .stage-ai-bar,
 html[data-host="mobile"] .ai-dock,
 html[data-host="mobile"] .ai-rail {display:none!important;}
 html[data-host="mobile"] .ribbon-tab,html[data-host="mobile"] button { -webkit-tap-highlight-color:transparent; }
+html[data-host="mobile"] #univer-container canvas[id^="univer-sheet-main-canvas_"] { touch-action:none; }

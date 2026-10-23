@@ -3,6 +3,7 @@ import { Buffer } from 'buffer';
 const format = new URLSearchParams(location.search).get('format');
 try {
     if (format === 'xlsx') {
+        (await import('./sheets-touch')).installSheetsTouch();
         await import('./sheets-host');
         await import('../../vendor/sheets/src/renderer/main');
     }

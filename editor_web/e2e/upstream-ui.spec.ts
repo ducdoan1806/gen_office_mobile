@@ -19,10 +19,11 @@ async function mobileScreenshot(page:Page,path:string){await page.setViewportSiz
 test('original Sheets App: ribbon formatting, formula, save and reload',async({page})=>{
  const {errors,writes}=await setup(page,'xlsx');await expect(page.getByRole('button',{name:'Trang đầu',exact:true})).toBeVisible();
  await page.waitForFunction(()=>(window as any).genOfficeSheets?.getActiveWorkbook());
- await page.evaluate(()=>{const b=(window as any).genOfficeSheets.getActiveWorkbook(),s=b.getSheets()[0];b.setActiveSheet(s);s.getRange('B2').setValue(25);s.getRange('B2').activate();});
+ await page.evaluate(()=>{const b=(window as any).genOfficeSheets.getActiveWorkbook(),s=b.getSheets()[0];b.setActiveSheet(s);s.getRange('B2').setValue(25);s.getRange('E2').setValue('=SUM(B2:C2)');s.getRange('B2').activate();});
  await expect.poll(()=>page.evaluate(()=>(window as any).genOfficeSheets.getActiveWorkbook().getSheets()[0].getRange('D2').getValue())).toBe(33);
  await page.locator('.inline-tools button').filter({has:page.locator('b')}).first().click();
  await command(page,'save');expect(writes).toHaveLength(1);const zip=await JSZip.loadAsync(writes[0]);expect(await zip.file('xl/worksheets/sheet1.xml')!.async('string')).toContain('>25<');
+ expect(await zip.file('xl/worksheets/sheet1.xml')!.async('string')).toMatch(/<c[^>]*r="E2"[^>]*>[\s\S]*?<v>33<\/v>[\s\S]*?<\/c>/);
  const before=await JSZip.loadAsync(fixture('sheets-test.xlsx'));for(const name of Object.keys(before.files).filter(n=>n.startsWith('xl/charts/')&&!before.files[n].dir))expect(await zip.file(name)!.async('uint8array')).toEqual(await before.file(name)!.async('uint8array'));
  await page.route('**/documents/edited*',route=>route.fulfill({body:writes[0],contentType:'application/octet-stream'}));
  await command(page,'open',{url:new URL('/documents/edited',page.url()).href,name:'edited.xlsx',documentId:'fixture'});
@@ -44,4 +45,43 @@ test('original Slides App: canvas text editor, add slide, history and save',asyn
 test('original PDF App: thumbnails, search, page navigation and mobile ribbon',async({page})=>{
  const {errors,writes}=await setup(page,'pdf');await expect(page.locator('.pdf-page').first()).toBeVisible();await page.getByRole('button',{name:'Tìm kiếm',exact:true}).first().click();const input=page.locator('.pdf-search-input');await expect(input).toBeVisible();await input.fill('Factory');await page.waitForTimeout(800);await expect(page.locator('.pdf-search-input')).toHaveValue('Factory');await expect(page.locator('.tb-readonly')).toContainText('Chế độ xem PDF');
  await mobileScreenshot(page,'pdf-mobile.png');await page.locator('.pdf-thumb[data-idx="2"]').click();await expect(page.locator('.pdf-thumb-active')).toHaveAttribute('data-idx','2');expect(writes).toEqual([]);expect(errors).toEqual([]);
+});
+
+test('touch grid pans with axis lock and inertia without selecting cells',async({page})=>{
+ await setup(page,'xlsx');await page.setViewportSize({width:390,height:800});
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ await page.evaluate(()=>{const sheet=(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet();sheet.getRange('B2').activate();});
+ const canvas=page.locator('#univer-container canvas').last(),box=(await canvas.boundingBox())!;
+ const client=await page.context().newCDPSession(page);
+ const start=async(x:number,y:number)=>client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});
+ const move=async(x:number,y:number)=>client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y,id:1}]});
+ const end=async()=>client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ const state=()=>page.evaluate(()=>(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet().getScrollState());
+ const x=box.x+250,y=box.y+Math.min(350,box.height-50);
+ await start(x,y);for(let i=1;i<=8;i++){await move(x+2,y-i*20);await page.waitForTimeout(18);}await end();
+ await expect.poll(async()=>(await state()).sheetViewStartRow).toBeGreaterThan(0);
+ const first=await state();await page.waitForTimeout(200);const coast=await state();expect(coast.sheetViewStartRow).toBeGreaterThanOrEqual(first.sheetViewStartRow);
+ await page.waitForTimeout(1200);const before=await state();
+ await start(x,y);for(let i=1;i<=6;i++){await move(x-i*22,y+2);await page.waitForTimeout(18);}await end();
+ await expect.poll(async()=>(await state()).sheetViewStartColumn).toBeGreaterThan(0);
+ expect((await state()).sheetViewStartRow).toBe(before.sheetViewStartRow);
+ expect(await page.evaluate(()=>(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet().getActiveRange()?.getA1Notation())).toBe('B2');
+ await client.detach();
+});
+
+test('touch tap selects, long press selects a range, double tap edits',async({page})=>{
+ await setup(page,'xlsx');await page.setViewportSize({width:390,height:800});await page.waitForTimeout(250);
+ const client=await page.context().newCDPSession(page);
+ const point=async(ref:string)=>{
+  const r=await page.evaluate(ref=>{const r=(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet().getRange(ref).getCellRect();return{x:r.x+r.width/2,y:r.y+r.height/2};},ref);
+  const box=(await page.locator('#univer-container canvas').last().boundingBox())!;return{x:box.x+r.x,y:box.y+r.y};
+ };
+ const touch=async(type:string,p?:{x:number,y:number})=>client.send('Input.dispatchTouchEvent',{type,touchPoints:p?[{...p,id:1}]:[]});
+ const active=()=>page.evaluate(()=>(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet().getActiveRange()?.getA1Notation());
+ const b2=await point('B2');await touch('touchStart',b2);await touch('touchEnd');await expect.poll(active).toBe('B2');
+ await page.waitForTimeout(400);await touch('touchStart',b2);await page.waitForTimeout(450);await touch('touchMove',await point('C3'));await touch('touchEnd');await expect.poll(active).toBe('B2:C3');
+ await page.waitForTimeout(400);await touch('touchStart',b2);await touch('touchEnd');await page.waitForTimeout(70);await touch('touchStart',b2);await touch('touchEnd');
+ await expect(page.locator('[contenteditable="true"][id$="DOCS_NORMAL"]')).toBeFocused();
+ await page.keyboard.press('Control+A');await page.keyboard.insertText('42');await page.keyboard.press('Enter');
+ await expect.poll(()=>page.evaluate(()=>(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet().getRange('B2').getValue())).toBe(42);await client.detach();
 });

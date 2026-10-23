@@ -22,6 +22,18 @@ async function saveRequest(input: any, recovery = false) {
             throw Error('Dữ liệu lưu chưa truyền đủ.');
         request.edits = t.edits;
     }
+    // Newly typed formulas have no cached value in the input ZIP. Include the
+    // live result as well as the upstream overlay for existing formulas.
+    request.formulaValues = [...(request.formulaValues ?? [])];
+    const workbook = (window as any).genOfficeSheets?.getActiveWorkbook();
+    for (const edit of request.edits ?? []) {
+        if (!edit.writeValue || !edit.formula) continue;
+        const sheet = workbook?.getSheets().find((sheet:any)=>sheet.getSheetId()===edit.sheetId);
+        const value = sheet?.getRange(edit.row,edit.column,1,1).getValue();
+        if (value === null || value === undefined) throw Error('Công thức chưa tính xong. Hãy đợi rồi lưu lại.');
+        request.formulaValues = request.formulaValues.filter((cell:any)=>cell.sheetId!==edit.sheetId || cell.row!==edit.row || cell.column!==edit.column);
+        request.formulaValues.push({sheetId:edit.sheetId,row:edit.row,column:edit.column,value});
+    }
     const { bytes: data, touchedEntries } = await serializeXlsxSession(s, request);
     if (request.editsTransferId)
         transfers.delete(request.editsTransferId);

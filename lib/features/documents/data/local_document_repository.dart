@@ -7,6 +7,8 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:crypto/crypto.dart';
 import 'legacy_doc_converter.dart';
+import 'csv_workbook_codec.dart';
+import 'dart:isolate';
 
 import '../domain/document_repository.dart';
 import 'android_document_files.dart';
@@ -179,15 +181,23 @@ class LocalDocumentRepository implements DocumentRepository {
     final extension = format.name;
     // The display name is never used as a filesystem path.
     name = name.split(RegExp(r'[/\\]')).last.trim();
-    if (!name.toLowerCase().endsWith(legacyDoc ? '.doc' : '.$extension') ||
-        name.length <= (legacyDoc ? 4 : 5) ||
+    final sourceExtension = name.toLowerCase().split('.').last;
+    final converted = sourceExtension != extension;
+    final validExtensions = switch (format) {
+      DocumentFormat.docx => legacyDoc ? ['doc'] : ['docx'],
+      DocumentFormat.xlsx => ['xlsx', 'xls', 'csv'],
+      DocumentFormat.pptx => ['pptx', 'ppt'],
+      _ => <String>[],
+    };
+    if (!validExtensions.contains(sourceExtension) ||
+        name.length <= sourceExtension.length + 1 ||
         name.contains(RegExp(r'[\x00-\x1f]'))) {
-      throw ArgumentError('Tên tài liệu DOCX không hợp lệ.');
+      throw ArgumentError('Tên tài liệu không hợp lệ.');
     }
     final limit = isExport ? maxExportBytes : maxImportBytes;
     if (bytes.isEmpty || bytes.length > limit) {
       throw ArgumentError(
-        'DOCX phải có nội dung và không vượt ${limit ~/ (1024 * 1024)} MB.',
+        'Tài liệu phải có nội dung và không vượt ${limit ~/ (1024 * 1024)} MB.',
       );
     }
     if (sourceUri != null) {
@@ -200,16 +210,19 @@ class LocalDocumentRepository implements DocumentRepository {
       }
     }
     final sourceLength = bytes.length;
-    final originalDoc = legacyDoc ? bytes : null;
-    final sourceHash = legacyDoc ? sha256.convert(bytes).toString() : null;
-    if (legacyDoc) {
-      bytes = await _converter.toDocx(bytes);
+    final originalDoc = converted ? bytes : null;
+    final sourceHash = converted ? sha256.convert(bytes).toString() : null;
+    if (converted) {
+      final input = bytes;
+      bytes = sourceExtension == 'csv'
+          ? await Isolate.run(() => CsvWorkbookCodec.toXlsx(input))
+          : await _converter.convertOffice(bytes, sourceExtension, extension);
       if (bytes.length > maxExportBytes ||
           bytes.length < 4 ||
           bytes[0] != 80 ||
           bytes[1] != 75) {
         throw StateError(
-          'Kết quả chuyển DOC sang DOCX không hợp lệ hoặc vượt 32 MB.',
+          'Kết quả chuyển đổi tài liệu không hợp lệ hoặc vượt 32 MB.',
         );
       }
     }
@@ -224,7 +237,7 @@ class LocalDocumentRepository implements DocumentRepository {
       final createdAt = DateTime.now().toUtc();
       if (originalDoc != null) {
         await File(
-          '${staging.path}/original-source.doc',
+          '${staging.path}/original-source.$sourceExtension',
         ).writeAsBytes(originalDoc, flush: true);
       }
       await File(
@@ -281,7 +294,7 @@ class LocalDocumentRepository implements DocumentRepository {
       throw ArgumentError('ID tài liệu không hợp lệ.');
     }
     if (bytes.isEmpty || bytes.length > maxExportBytes) {
-      throw ArgumentError('DOCX phải có nội dung và không vượt 32 MB.');
+      throw ArgumentError('Tài liệu phải có nội dung và không vượt 32 MB.');
     }
     final root = await _root();
     Directory? directory;
@@ -306,9 +319,24 @@ class LocalDocumentRepository implements DocumentRepository {
       final extension = data['format'] as String;
       final oldContent = _contentFile(data);
       final revision = _newId();
-      final sourceBytes = data['legacyDoc'] == true
-          ? await _converter.toDoc(bytes)
-          : bytes;
+      final document = _document(directory, data);
+      final Uint8List sourceBytes;
+      if (document.sourceExtension == 'csv') {
+        final template = await File(
+          '${directory.path}/original-source.csv',
+        ).readAsBytes();
+        sourceBytes = await Isolate.run(
+          () => CsvWorkbookCodec.fromXlsx(bytes, template),
+        );
+      } else if (document.needsConversion) {
+        sourceBytes = await _converter.convertOffice(
+          bytes,
+          extension,
+          document.sourceExtension,
+        );
+      } else {
+        sourceBytes = bytes;
+      }
       if (sourceBytes.length > maxExportBytes || sourceBytes.isEmpty) {
         throw StateError('Kết quả chuyển đổi vượt giới hạn 32 MB.');
       }
@@ -320,7 +348,7 @@ class LocalDocumentRepository implements DocumentRepository {
         'contentFile': 'content-$revision.$extension',
         'updatedAt': DateTime.now().toUtc().toIso8601String(),
         'sizeBytes': sourceBytes.length,
-        if (data['legacyDoc'] == true)
+        if (document.needsConversion)
           'sourceHash': sha256.convert(sourceBytes).toString(),
       };
       try {
