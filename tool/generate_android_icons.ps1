@@ -48,8 +48,8 @@ try {
     foreach ($density in $densities.Keys) {
         $factor = $densities[$density]
         Write-Icon "$res/mipmap-$density/ic_launcher.png" (48*$factor) (48*$factor) $true
-        # Full bleed adaptive foreground is masked by Android/the launcher.
-        Write-Icon "$res/drawable-$density/ic_launcher_foreground.png" (108*$factor) (108*$factor) $false
+        # Keep the complete rounded logo inside the 66dp safe circle on a 108dp layer.
+        Write-Icon "$res/drawable-$density/ic_launcher_foreground.png" (108*$factor) (54*$factor) $true
         # 128dp rounded artwork fits entirely in Android 12's 192dp safe circle.
         Write-Icon "$res/drawable-$density/splash_icon.png" (288*$factor) (128*$factor) $true
         Write-Icon "$res/drawable-$density/splash_logo.png" (96*$factor) (96*$factor) $true

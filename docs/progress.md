@@ -142,3 +142,8 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] Tách splash khỏi launcher icon: logo bo góc 25% trên nền sáng cùng màu app; Android 12+ dùng splash native với vùng an toàn và tên VPIC1 Office phía dưới, Android 7–11 dùng layer-list tương ứng. Không thêm thời gian chờ khởi động.
 - [x] Thêm Adaptive Icon cho Android 8+ để launcher áp mask theo thiết bị; icon legacy Android 7 bo góc, trang Giới thiệu bo góc 25%. Script tạo lại đầy đủ PNG từ icon nguồn, giữ nguyên file gốc.
 - [x] Analyze và build APK debug ARM64 đạt; cài bằng `adb install -r`, cold launch trên Samsung SM-A075F/Android 16 và chụp kiểm tra splash thực tế: logo bo góc, không bị cắt, có tên ứng dụng. Android 7–11 chưa kiểm tra trực tiếp trong đợt này.
+
+### Giữ trọn logo ngoài launcher — 23/10/2026
+
+- [x] Thu logo adaptive xuống 54dp trong layer 108dp, bo góc 25%, nằm trọn trong vòng an toàn 66dp; thêm nền sáng đồng bộ app để mask của launcher không cắt vào hình. Giữ tỉ lệ vuông và nguyên hình nguồn, không đổi splash/trang Giới thiệu.
+- [x] Build APK debug ARM64 đạt, cài bằng `adb install -r` và kiểm tra trực tiếp trong danh sách ứng dụng Samsung Android 16: logo đầy đủ, đúng tỉ lệ, không bị phóng/cắt như bản trước. Icon nguồn giữ nguyên SHA-256.
