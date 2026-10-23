@@ -69,7 +69,22 @@ test('touch grid pans with axis lock and inertia without selecting cells',async(
  await client.detach();
 });
 
-test('touch tap selects, long press selects a range, double tap edits',async({page})=>{
+for (const androidOffsets of [false,true]) {
+test('touch tap selects, long press selects a range, double tap edits'+(androidOffsets?' with Android WebView scaled offsets':''),async({page})=>{
+ if(androidOffsets)await page.addInitScript(()=>{
+  // Reproduce WebView's extra page-scale conversion of synthetic offsets.
+  // Own canvas-local offsets must win over these incorrect derived values.
+  for(const key of ['offsetX','offsetY'] as const){
+   const native=Object.getOwnPropertyDescriptor(MouseEvent.prototype,key)!;
+   Object.defineProperty(MouseEvent.prototype,key,{configurable:true,get(){
+    const target=this.target as HTMLElement;
+    if(!this.isTrusted && this.type.startsWith('pointer') && target?.id?.startsWith('univer-sheet-main-canvas_')){
+     const rect=target.getBoundingClientRect();return key==='offsetX'?this.clientX/1.875-rect.left:this.clientY/1.875-rect.top;
+    }
+    return native.get!.call(this);
+   }});
+  }
+ });
  await setup(page,'xlsx');await page.setViewportSize({width:390,height:800});await page.waitForTimeout(250);
  const client=await page.context().newCDPSession(page);
  const point=async(ref:string)=>{
@@ -85,3 +100,4 @@ test('touch tap selects, long press selects a range, double tap edits',async({pa
  await page.keyboard.press('Control+A');await page.keyboard.insertText('42');await page.keyboard.press('Enter');
  await expect.poll(()=>page.evaluate(()=>(window as any).genOfficeSheets.getActiveWorkbook().getActiveSheet().getRange('B2').getValue())).toBe(42);await client.detach();
 });
+}

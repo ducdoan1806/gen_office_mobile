@@ -10,10 +10,19 @@ export function installSheetsTouch() {
         // A touch pan must work before a mouse click has focused the grid.
         void api?.executeCommand('sheet.command.set-scroll-relative',{offsetX:x/zoom,offsetY:y/zoom});
     };
-    const mouse=(g:any,type:string,x=g.x,y=g.y)=>g.target.dispatchEvent(new PointerEvent(type,{
-        bubbles:true,cancelable:true,pointerType:'mouse',pointerId:1,isPrimary:true,
-        clientX:x,clientY:y,button:0,buttons:type==='pointerup'||type==='pointercancel'?0:1,
-    }));
+    const mouse=(g:any,type:string,x=g.x,y=g.y)=>{
+        const rect=g.target.getBoundingClientRect();
+        const event=new PointerEvent(type,{
+            bubbles:true,cancelable:true,pointerType:'mouse',pointerId:1,isPrimary:true,
+            clientX:x,clientY:y,button:0,buttons:type==='pointerup'||type==='pointercancel'?0:1,
+        });
+        // Android WebView can apply its page scale again when deriving offsets
+        // for synthetic events. Univer picks cells using canvas-local CSS pixels.
+        Object.defineProperties(event,{
+            offsetX:{value:x-rect.left},offsetY:{value:y-rect.top},
+        });
+        return g.target.dispatchEvent(event);
+    };
     const consume=(e:PointerEvent)=>{e.preventDefault();e.stopImmediatePropagation();};
     const cancel=()=>{if(gesture){clearTimeout(gesture.timer);if(gesture.selecting)mouse(gesture,'pointercancel');}gesture=undefined;stop();lastTap=undefined;};
     const down=(e:PointerEvent)=>{

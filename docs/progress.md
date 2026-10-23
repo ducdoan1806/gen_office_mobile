@@ -117,3 +117,9 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] Mở/sửa/lưu CSV bằng codec Unicode offline; giữ dấu phân cách/BOM/mã hóa, xử lý quoting/xuống dòng và mã có số 0 đầu. Lưu giá trị một sheet; cảnh báo giới hạn và yêu cầu Save As XLSX nếu có nhiều sheet.
 - Phạm vi/giới hạn: [XLS/PPT/CSV và thao tác cảm ứng](legacy-office-formats.md). Nghiệm thu thủ công và đối chiếu Office vẫn chưa hoàn thành; các hạng mục hoãn ở bước 5/iOS/AI giữ nguyên.
 - Kiểm chứng 23/10/2026: 51 unit/widget test Flutter, 8 test web/engine, 5 bài trình duyệt production và Dart analyze đều đạt. Bộ Android tổng hợp đạt **13 ca** trên Samsung SM-A075F/Android 16/ARM64: XLSX, PPTX, XLS, PPT, CSV; 3 PDF; 4 DOCX; DOC offline. Xem [QA máy thật](android-device-qa.md).
+
+### Sửa chọn ô/vùng Excel trên Android WebView — 23/10/2026
+
+- [x] Sửa tọa độ canvas của sự kiện PointerEvent được tạo từ touch. Trên Samsung DPR 1,875, WebView đã áp thêm page scale vào offsetX/offsetY, khiến điểm chạm rơi ra ngoài ô; bộ chuyển tiếp nay cung cấp offset theo CSS pixel của canvas.
+- [x] Thêm regression mô phỏng lỗi offset của WebView; 6 bài Playwright production đạt, gồm chạm chọn, giữ kéo vùng, chạm hai lần sửa và hồi quy cuộn/lưu.
+- [x] Cài APK thường bằng install -r và kiểm tra bằng input Android thật trên Samsung: chạm chọn B2, giữ rồi kéo chọn B2:C3, vuốt dọc/ngang giữ nguyên vùng chọn. Nghiệm thu cảm ứng/bàn phím toàn bộ ứng dụng trong bước 8 vẫn chưa hoàn tất.
