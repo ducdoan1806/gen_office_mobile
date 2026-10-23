@@ -2,7 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:networkSecurityConfig="@xml/network_security_config"
-        android:label="gen_office_mobile"
+        android:label="VPIC1 Office"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <service android:name=".DocConversionService" android:exported="false" android:process=":doc_converter" android:stopWithTask="true" />

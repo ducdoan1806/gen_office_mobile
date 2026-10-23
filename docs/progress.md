@@ -130,3 +130,9 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] Giữ một nút Lưu trên AppBar Flutter; thêm **⋮ → Lưu thành bản mới** cho DOCX/XLSX/PPTX và các file chuyển đổi tương ứng. Gọi pipeline Save As gốc, không đổi chức năng Lưu ghi đè nguồn. Hoàn tác/Làm lại giữ ở thanh Flutter dưới; bản tạm khôi phục nền vẫn hoạt động.
 - [x] 51 test Flutter, 8 test web/engine, 7 bài trình duyệt và analyze đạt; 13 ca Android đạt. Ca DOCX kiểm tra menu Flutter mới thực sự tạo bản sao, Lưu tiếp cập nhật bản đang mở và không nhân thêm mục thư viện.
 - Quy trình test: bắt buộc `--no-uninstall`; SDK hiện tại mặc định tự gỡ app khi kết thúc test. Đã ghi nhận việc reset danh sách gần đây ở lần này, mở lại file Excel gốc qua SAF và bổ sung quy định vào AGENTS.md/README. File nguồn vẫn còn trong Downloads.
+
+### Nhận diện VPIC1 Office — 23/10/2026
+
+- [x] Đổi tên hiển thị Android và tiêu đề màn hình chính thành **VPIC1 Office**; dùng icon do chủ dự án cung cấp cho launcher và trang Giới thiệu. Giữ applicationId và phiên bản 1.0.0+1.
+- [x] Thêm nút **ⓘ Giới thiệu** tại màn hình chính: mô tả nội bộ đã duyệt, đơn vị VPIC1, nền tảng Android, phiên bản/bản dựng đọc từ APK và giấy phép phần mềm. Bỏ các thông tin liên hệ còn là placeholder theo yêu cầu.
+- [x] Analyze và 51 test Flutter đạt; build APK debug ARM64 thành công. Cài APK thường bằng `adb install -r`, kiểm tra trực tiếp tên, icon, nội dung Giới thiệu, cuộn trang và phiên bản **1.0.0 (bản dựng 1)** trên Samsung SM-A075F/Android 16. Không chạy integration test thiết bị cho thay đổi nhận diện này.

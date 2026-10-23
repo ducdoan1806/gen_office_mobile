@@ -34,6 +34,17 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/app_info")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "getAppInfo") result.notImplemented()
+                else {
+                    @Suppress("DEPRECATION")
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    @Suppress("DEPRECATION")
+                    val build = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+                    result.success(mapOf("version" to info.versionName, "buildNumber" to build.toString()))
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/document_files")
             .setMethodCallHandler(::handleDocumentCall)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/doc_conversion")

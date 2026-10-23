@@ -1,4 +1,6 @@
-# GenOffice Mobile
+# VPIC1 Office
+
+Ứng dụng làm việc với tài liệu nội bộ VPIC1, dành cho cán bộ, nhân viên Công ty VPIC1 trên Android. Mở biểu tượng **ⓘ Giới thiệu** ở màn hình chính để xem mô tả, phiên bản APK và giấy phép phần mềm. Icon nguồn nằm tại `assets/branding/app_icon_1024.png`; tạo lại các cỡ icon Android bằng `tool/generate_android_icons.ps1` trên Windows.
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
