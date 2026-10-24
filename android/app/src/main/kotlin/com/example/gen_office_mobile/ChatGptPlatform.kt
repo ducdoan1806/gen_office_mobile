@@ -1,8 +1,6 @@
 package com.example.gen_office_mobile
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -52,11 +50,7 @@ internal class ChatGptPlatform(private val context: Context) {
         val encrypted = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
         check(prefs.edit().putString("value", encode(cipher.iv) + "." + encode(encrypted)).commit())
     }
-    fun openBrowser(url: String) {
-        val uri = Uri.parse(url)
-        require(uri.scheme == "https" && uri.host == "auth.openai.com" && uri.path == "/api/accounts/authorize")
-        context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
+
     private fun json(url: String): JSONObject {
         val parsed = URL(url)
         require(parsed.protocol == "https" && parsed.host == "auth.openai.com" && parsed.port in listOf(-1, 443))

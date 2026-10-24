@@ -38,6 +38,43 @@ class FakeChatGpt extends ChatGptClient {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'restarting after process death detects interrupted login and preserves host identity',
+    () async {
+      const channel = MethodChannel('chatgpt-recovery-test');
+      String? saved;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            if (call.method == 'read') {
+              return jsonEncode({
+                'host_id': 'urn:uuid:stable-host',
+                'auth_pending': true,
+              });
+            }
+            if (call.method == 'write') {
+              saved = (call.arguments as Map)['value'] as String;
+              return null;
+            }
+            throw StateError('Unexpected method');
+          });
+      final client = ChatGptClient(platform: channel);
+      final chat = DocumentChat(client: client);
+      try {
+        await chat.initialize();
+        expect(client.interruptedAuth, true);
+        expect(client.connected, false);
+        expect(chat.error, contains('Android đã dừng'));
+        final record = jsonDecode(saved!) as Map;
+        expect(record['host_id'], 'urn:uuid:stable-host');
+        expect(record.containsKey('auth_pending'), false);
+      } finally {
+        chat.dispose();
+        client.dispose();
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      }
+    },
+  );
+  test(
     'OAuth rejects forged state and handles valid denied callback without saving tokens',
     () async {
       const channel = MethodChannel('chatgpt-oauth-test');
@@ -48,7 +85,9 @@ void main() {
       );
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-            if (call.method == 'read') return null;
+            if (call.method == 'read' || call.method == 'closeBrowser') {
+              return null;
+            }
             if (call.method == 'write') {
               writes.add((call.arguments as Map)['value'] as String);
               return null;

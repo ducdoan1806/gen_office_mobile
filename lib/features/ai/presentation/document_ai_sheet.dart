@@ -46,6 +46,10 @@ class DocumentChat extends ChangeNotifier {
     try {
       await client.initialize();
       _subject = client.subject;
+      if (client.interruptedAuth) {
+        error =
+            'Android đã dừng phiên đăng nhập trước. Bấm Continue with ChatGPT để tiếp tục; trình duyệt có thể đã nhớ tài khoản của bạn.';
+      }
       if (client.connected && client.models.isEmpty) await client.loadModels();
       selectedModel ??= client.model;
     } catch (_) {

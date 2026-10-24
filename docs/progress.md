@@ -156,3 +156,10 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] 58 test Flutter đạt, analyze sạch và APK debug x86_64 build thành công. Cài đè bằng install -r; trên emulator kiểm tra mở bảng AI, nút Continue with ChatGPT mở được trang auth.openai.com. Không chạy integration test có cleanup gỡ app.
 - [ ] Nghiệm thu đăng nhập/cấp quyền/tải model/nhận câu trả lời bằng tài khoản thật; Chrome trên emulator hiện ANR, WebView tài liệu cũng kẹt khởi động. Chưa xác nhận chức năng đăng nhập thật, refresh token và chat trên máy thật. Không đánh dấu hoàn tất AI hoặc phát hành production.
 - Chi tiết/phạm vi/quyền triển khai SIWC: [ChatGPT Android](chatgpt-android.md). AI công ty, các nhà cung cấp khác và AI tự sửa file vẫn chưa triển khai.
+
+### Sửa quay lại app sau đăng nhập ChatGPT — 24/10/2026
+
+- [x] Xác nhận lỗi 127.0.0.1 do Android LOW_MEMORY dừng app khi Chrome độc lập ở trước. Chuyển sang Custom Tabs/session/binding + empty KeepAlive service; giữ listener khi trình duyệt hoạt động. Thêm nút quay lại app, singleTask, chờ 15 phút và cảnh báo phiên bị process death.
+- [x] 59 test Flutter, analyze và build ARM64 đạt. Trên Samsung Android 16: chủ tài khoản đăng nhập/cấp quyền và quay về app thành công; tải model GPT-6.1-Sol; câu hỏi mẫu nhận đúng Hello VPIC1; thu gọn giữ bản nháp/chat, phản hồi tiếp tục khi đóng bảng; force-stop/mở lại khôi phục kết nối/model.
+- [ ] Nghiệm thu refresh token hết hạn, thu hồi quyền và các lỗi mạng/timeout thực tế. Chưa có AI tự áp dụng sửa file hoặc trích vùng chọn canvas.
+- Không gửi tài liệu công ty hoặc thay file nguồn trong lượt kiểm tra. Xem [QA ChatGPT Android](chatgpt-android.md).

@@ -31,6 +31,7 @@ class ChatGptClient extends ChangeNotifier {
   List<ChatGptModel> models = [];
   String? model;
   bool connecting = false;
+  bool interruptedAuth = false;
   String? get email => _record['email'] as String?;
   String? get subject => _record['subject'] as String?;
   bool get connected => _record['access_token'] is String;
@@ -44,6 +45,8 @@ class ChatGptClient extends ChangeNotifier {
       _record = Map<String, dynamic>.from(jsonDecode(saved) as Map);
     }
     model = _record['model'] as String?;
+    interruptedAuth = _record.remove('auth_pending') == true;
+    if (interruptedAuth) await _save();
     notifyListeners();
   }
 
@@ -81,10 +84,12 @@ class ChatGptClient extends ChangeNotifier {
     await initialize();
     if (connecting) return;
     connecting = true;
+    interruptedAuth = false;
     notifyListeners();
     try {
       final host = _record['host_id'] as String? ?? _newHostId();
       _record['host_id'] = host;
+      _record['auth_pending'] = true;
       await _save();
       final state = randomToken(),
           nonce = randomToken(),
@@ -119,7 +124,7 @@ class ChatGptClient extends ChangeNotifier {
             "default-src 'none'",
           );
           request.response.write(
-            '<meta charset="utf-8"><title>VPIC1 Office</title><h2>VPIC1 Office</h2><p>Đã nhận kết quả đăng nhập. Quay lại VPIC1 Office để tiếp tục.</p>',
+            '<meta charset="utf-8"><title>VPIC1 Office</title><h2>VPIC1 Office</h2><p>Đã nhận kết quả đăng nhập.</p><p><a href="vpic1office://chatgpt-return">Quay lại VPIC1 Office</a></p>',
           );
           completer.complete(values);
         }
@@ -138,7 +143,7 @@ class ChatGptClient extends ChangeNotifier {
         ).toString(),
       });
       final callback = await completer.future.timeout(
-        const Duration(minutes: 5),
+        const Duration(minutes: 15),
         onTimeout: () => throw const ChatGptException(
           'Hết thời gian đăng nhập. Vui lòng thử lại.',
         ),
@@ -208,6 +213,14 @@ class ChatGptClient extends ChangeNotifier {
       await _callback?.close(force: true);
       _callback = null;
       _authorization = null;
+      try {
+        await _platform.invokeMethod<void>('closeBrowser');
+      } catch (_) {}
+      if (_record.remove('auth_pending') != null) {
+        try {
+          await _save();
+        } catch (_) {}
+      }
       connecting = false;
       notifyListeners();
     }

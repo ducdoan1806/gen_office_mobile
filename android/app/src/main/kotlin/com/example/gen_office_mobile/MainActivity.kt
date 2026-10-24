@@ -15,6 +15,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
+    private var chatGptBrowser: ChatGptBrowser? = null
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var pending: MethodChannel.Result? = null
@@ -26,6 +27,7 @@ class MainActivity : FlutterActivity() {
     private val maxBytes = 32 * 1024 * 1024
 
     override fun onDestroy() {
+        chatGptBrowser?.close()
         pending?.error("closed", "Đã đóng trình chọn file.", null)
         pending = null
         io.shutdown()
@@ -35,11 +37,15 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val chatGpt = ChatGptPlatform(applicationContext)
+        val authBrowser = ChatGptBrowser(this)
+        chatGptBrowser = authBrowser
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vpic1/chatgpt")
             .setMethodCallHandler { call, result ->
                 if (call.method == "openBrowser") {
-                    try { chatGpt.openBrowser(requireNotNull(call.argument<String>("url"))); result.success(null) }
+                    try { authBrowser.open(requireNotNull(call.argument<String>("url")), result) }
                     catch (_: Exception) { result.error("browser", "Không mở được trình duyệt để đăng nhập ChatGPT.", null) }
+                } else if (call.method == "closeBrowser") {
+                    authBrowser.close(); result.success(null)
                 } else if (call.method in listOf("read", "write", "verifyIdToken")) {
                     background(result, "Không xác thực hoặc lưu được kết nối ChatGPT. Vui lòng thử lại.") {
                         when (call.method) {
