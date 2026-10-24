@@ -1,6 +1,6 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 22/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất sau khi tạm hoãn AI. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất; AI công ty và AI tự sửa tài liệu vẫn tạm hoãn, ChatGPT cá nhân được triển khai riêng theo yêu cầu. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
@@ -13,7 +13,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 - **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
 - **Điện thoại Android thật:** chủ dự án đã mở lại kiểm thử ngày 22/10/2026. Đã kiểm thử tự động trên Samsung SM-A075F/Android 16/ARM64; nghiệm thu bàn phím/cảm ứng và đối chiếu Microsoft Word vẫn chưa hoàn thành. Xem [kết quả máy thật](android-device-qa.md).
 - **iOS:** tạm hoãn toàn bộ công việc còn lại ở bước 9 và việc kiểm thử lại các tính năng mới trên iOS. Các dấu hoàn thành cũ được giữ như lịch sử kết quả đã làm.
-- **AI:** AI công ty và AI tự sửa tài liệu tiếp tục tạm hoãn; ChatGPT cá nhân được bổ sung theo yêu cầu ngày 24/10/2026, xem phần cuối.
+- **AI:** AI công ty và AI tự sửa tài liệu tiếp tục tạm hoãn. ChatGPT cá nhân đã có đăng nhập, chat và kiểm thử thật trên Samsung ngày 24/10/2026; các giới hạn và phần chưa nghiệm thu được ghi đầy đủ ở mục ChatGPT cuối tài liệu.
 
 ## Lộ trình đã thống nhất
 
@@ -104,7 +104,7 @@ Chi tiết phần Sheets/Slides và giới hạn hiện tại: [Android Sheets/S
 
 ## Điểm tiếp tục
 
-Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã chuyển PDF/XLSX/PPTX sang App/ribbon gốc GenOffice như DOCX, giữ giới hạn PDF chỉ đọc. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn.
+Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã chuyển PDF/XLSX/PPTX sang App/ribbon gốc GenOffice như DOCX, giữ giới hạn PDF chỉ đọc. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn. ChatGPT cá nhân đã nghiệm thu đăng nhập/quay về app, chat thật và khôi phục kết nối/model trên Samsung ngày 24/10/2026; còn các ca refresh/revoke/mạng lỗi và AI thao tác tài liệu ở checklist cuối.
 
 Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI công ty/tự sửa tài liệu cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
@@ -148,18 +148,82 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [x] Thu logo adaptive xuống 54dp trong layer 108dp, bo góc 25%, nằm trọn trong vòng an toàn 66dp; thêm nền sáng đồng bộ app để mask của launcher không cắt vào hình. Giữ tỉ lệ vuông và nguyên hình nguồn, không đổi splash/trang Giới thiệu.
 - [x] Build APK debug ARM64 đạt, cài bằng `adb install -r` và kiểm tra trực tiếp trong danh sách ứng dụng Samsung Android 16: logo đầy đủ, đúng tỉ lệ, không bị phóng/cắt như bản trước. Icon nguồn giữ nguyên SHA-256.
 
-### ChatGPT cá nhân trên Android — 24/10/2026
+## ChatGPT cá nhân trên Android — tổng hợp đến 24/10/2026
 
-- [x] Nút AI trong Word/Excel/PowerPoint và PDF; bảng modal gần toàn màn hình, thu gọn/Back không tải lại editor. Giữ bản nháp/chat/model trong phiên editor và tiếp tục nhận phản hồi khi thu bảng.
-- [x] Luồng SIWC chính thức qua trình duyệt hệ thống, không API key/cookie từ ứng dụng khác; PKCE/state/nonce, kiểm tra ID token bằng JWKS, token mã hóa Android Keystore và loại khỏi backup. Model lấy theo quyền tài khoản; giữ lựa chọn riêng cho cuộc trò chuyện.
-- [x] Chat streaming, đính kèm nội dung bằng thao tác dán, sao chép, dừng, chat mới, kết nối lại/ngắt kết nối. Chưa tự lấy vùng chọn canvas hay áp dụng sửa tài liệu.
-- [x] 58 test Flutter đạt, analyze sạch và APK debug x86_64 build thành công. Cài đè bằng install -r; trên emulator kiểm tra mở bảng AI, nút Continue with ChatGPT mở được trang auth.openai.com. Không chạy integration test có cleanup gỡ app.
-- [ ] Nghiệm thu đăng nhập/cấp quyền/tải model/nhận câu trả lời bằng tài khoản thật; Chrome trên emulator hiện ANR, WebView tài liệu cũng kẹt khởi động. Chưa xác nhận chức năng đăng nhập thật, refresh token và chat trên máy thật. Không đánh dấu hoàn tất AI hoặc phát hành production.
-- Chi tiết/phạm vi/quyền triển khai SIWC: [ChatGPT Android](chatgpt-android.md). AI công ty, các nhà cung cấp khác và AI tự sửa file vẫn chưa triển khai.
+### Yêu cầu và cách sử dụng đã thống nhất
 
-### Sửa quay lại app sau đăng nhập ChatGPT — 24/10/2026
+- Ưu tiên Android; trước mắt chỉ tích hợp ChatGPT. AI công ty vẫn là interface/mock/API stub; Claude, Gemini, Copilot và nhà cung cấp khác chưa triển khai.
+- AI công ty chỉ khả dụng khi truy cập được máy chủ nội bộ; tài khoản AI cá nhân do người dùng tự kết nối và sử dụng, không dùng chung tài khoản hoặc hạn mức do công ty quản lý.
+- Kết nối mạng không được tự đổi AI/model người dùng đã chọn. Khi mở rộng nhiều nhà cung cấp sau này, giữ lựa chọn của người dùng và chỉ cập nhật trạng thái khả dụng; không tự chuyển yêu cầu/lịch sử sang AI khác.
+- Dùng bảng AI trượt lên, có thể gần toàn màn hình; thu gọn để quay lại tài liệu liền mạch, không tải lại editor. Mỗi cuộc trò chuyện giữ model đã chọn; bản nháp/hội thoại tiếp tục tồn tại khi đóng/mở bảng trong cùng phiên editor.
+- Ưu tiên đăng nhập tài khoản ChatGPT chính thức, không bắt người dùng tìm API key; không lấy cookie/token từ app ChatGPT đã cài hoặc thu mật khẩu trong VPIC1 Office.
+- Các yêu cầu trên không đồng nghĩa đã hoàn tất kết nối AI công ty, hệ thống chọn nhiều nhà cung cấp hoặc AI tự chỉnh sửa tài liệu.
 
-- [x] Xác nhận lỗi 127.0.0.1 do Android LOW_MEMORY dừng app khi Chrome độc lập ở trước. Chuyển sang Custom Tabs/session/binding + empty KeepAlive service; giữ listener khi trình duyệt hoạt động. Thêm nút quay lại app, singleTask, chờ 15 phút và cảnh báo phiên bị process death.
-- [x] 59 test Flutter, analyze và build ARM64 đạt. Trên Samsung Android 16: chủ tài khoản đăng nhập/cấp quyền và quay về app thành công; tải model GPT-6.1-Sol; câu hỏi mẫu nhận đúng Hello VPIC1; thu gọn giữ bản nháp/chat, phản hồi tiếp tục khi đóng bảng; force-stop/mở lại khôi phục kết nối/model.
-- [ ] Nghiệm thu refresh token hết hạn, thu hồi quyền và các lỗi mạng/timeout thực tế. Chưa có AI tự áp dụng sửa file hoặc trích vùng chọn canvas.
-- Không gửi tài liệu công ty hoặc thay file nguồn trong lượt kiểm tra. Xem [QA ChatGPT Android](chatgpt-android.md).
+### Chức năng đã triển khai
+
+- [x] Nút Trợ lý AI ở thanh dưới của editor Word/Excel/PowerPoint; nút AI nổi ở PDF. Có thể mở AI cả khi editor đang tải.
+- [x] Bảng modal gần toàn màn hình, có thanh nắm, nút Thu gọn và Back. Giữ editor bên dưới, bản nháp, hội thoại và model khi thu gọn/mở lại; tiếp tục nhận câu trả lời khi bảng đóng.
+- [x] Continue with ChatGPT mở luồng Sign in with ChatGPT (SIWC) bằng trình duyệt chính thức qua Custom Tab; người dùng tự đăng nhập/cấp quyền, không nhập API key.
+- [x] Lấy danh sách model theo quyền tài khoản. Lưu lựa chọn làm mặc định; cuộc trò chuyện đã mở giữ model riêng, không đổi theo mạng hoặc khi mặc định của cuộc trò chuyện khác thay đổi.
+- [x] Gửi câu hỏi, nhận phản hồi streaming; Dừng trả lời, Cuộc trò chuyện mới, sao chép, tải lại model, kết nối lại và ngắt kết nối tài khoản.
+- [x] Cho người dùng chủ động dán nội dung văn bản/vùng ô/slide vào mục Đính kèm. Không tự tải toàn bộ tài liệu; chưa tự lấy vùng chọn canvas.
+- [x] Lưu thông tin kết nối/model để dùng lại sau khi mở app. Đổi/ngắt tài khoản dọn ngữ cảnh chat trong bộ nhớ để không chuyển lịch sử sang tài khoản khác.
+- [x] Giới hạn hiện tại: câu hỏi 6.000 ký tự, phần đính kèm 20.000 ký tự, tổng ngữ cảnh một yêu cầu 120.000 ký tự; báo lỗi khi vượt giới hạn.
+- Kết quả AI hiện chỉ đọc/sao chép. Chưa có xem trước diff, áp dụng sửa vào tài liệu hoặc hoàn tác thao tác do AI tạo.
+
+### Xác thực và lưu trữ
+
+- [x] OAuth public-client SIWC với tên VPIC1 Office, host ID ổn định; PKCE S256, state/nonce ngẫu nhiên, callback chỉ bind 127.0.0.1. Không giả danh ứng dụng khác.
+- [x] Kiểm tra chữ ký ID token bằng RSA/JWKS từ OpenAI discovery, issuer/audience/expiration/nonce, danh tính tài khoản và quyền dùng gói ChatGPT trước khi sử dụng.
+- [x] Token/host/model lưu mã hóa AES-GCM với Android Keystore; loại preferences xác thực khỏi cloud backup/device transfer. Không ghi token, mật khẩu, email tài khoản hoặc mã đăng nhập vào tài liệu tiến độ/log kiểm thử.
+- [x] Có xử lý refresh/rotation token trong mã và lỗi quyền/hạn mức/kết nối; chưa nghiệm thu refresh khi hết hạn thực tế hoặc revoke.
+- [x] Dùng Responses API công khai, store=false và stream=true; giữ ngữ cảnh cần thiết ở client, không dùng backend-api/cookie web.
+- SIWC có phạm vi tài khoản/quyền triển khai riêng. Kết quả đạt với tài khoản đã nghiệm thu không xác nhận mọi tài khoản, mọi gói hoặc mọi hình thức phân phối đều được hỗ trợ.
+- Lịch sử chat và bản nháp chỉ giữ trong bộ nhớ phiên editor. Thu gọn không mất; đóng editor hoặc process restart chưa khôi phục lịch sử/bản nháp từ đĩa. Tài khoản và model được lưu riêng, có khôi phục sau restart.
+
+### Lỗi 127.0.0.1 và bản sửa đã nghiệm thu
+
+- [x] Lần đầu trên emulator: mở được trang auth.openai.com nhưng Chrome ANR, WebView tài liệu kẹt khởi động; không coi đó là nghiệm thu đăng nhập thật.
+- [x] Lần đầu trên Samsung: người dùng đăng nhập được trên web nhưng callback 127.0.0.1 báo lỗi kết nối. ApplicationExitInfo xác nhận lúc 09:56:15 ngày 24/10/2026 Android dừng tiến trình chính vì LOW_MEMORY (importance=400), làm listener loopback biến mất.
+- [x] Đổi từ Chrome task độc lập sang Custom Tabs có session/binding, AndroidX Browser 1.9.0 và KeepAlive extra. Empty bound service chỉ giữ vòng đời, không cung cấp phương thức hoặc dữ liệu xác thực; không thêm foreground service hay quyền chạy nền.
+- [x] Kiểm tra trực tiếp trên Samsung: Chrome CustomTabActivity cùng task với app, bind ChatGptKeepAliveService và tiến trình VPIC1 giữ nguyên qua đăng nhập.
+- [x] MainActivity singleTask, tắt Flutter deep-link routing cho đường quay về để giữ màn hình đang làm việc. URI vpic1office://chatgpt-return chỉ mở app, không mang code/token; OAuth vẫn nhận kết quả qua loopback và kiểm tra PKCE/state/nonce.
+- [x] Tăng thời gian chờ lên 15 phút; dọn kết nối khi kết thúc/hủy; trang nhận kết quả có nút Quay lại VPIC1 Office.
+- [x] Ghi marker vào kho mã hóa để phát hiện phiên bị process death. Nếu phiên đã mất, báo đăng nhập lại; không tái sử dụng code/state không còn hợp lệ.
+- KeepAlive giảm rủi ro thu hồi bộ nhớ khi trình duyệt đang hoạt động; không bảo đảm app sống qua force-stop hoặc lỗi hệ thống.
+
+### Kết quả kiểm thử đã đạt
+
+- [x] 59 unit/widget test Flutter, gồm 8 ca ChatGPT; analyze không có vấn đề. APK debug ARM64 build thành công.
+- [x] Kiểm thử protocol: PKCE theo vector RFC7636, scope/state/nonce, từ chối callback giả mạo, xử lý từ chối cấp quyền mà không lưu token; request Responses đúng hợp đồng; SSE bị chia nhỏ UTF-8/CRLF.
+- [x] Kiểm thử trạng thái: giữ model theo cuộc trò chuyện, loại phần trả lời bị hủy khỏi lịch sử gửi tiếp, đóng bảng giữ bản nháp/yêu cầu đang chạy, nhận biết process death và giữ host ID.
+- [x] Máy thật Samsung SM-A075F/Android 16/ARM64: cài đè bằng adb install -r, giữ nguyên hai mục tài liệu gần đây. Không uninstall/clear data.
+- [x] Chủ tài khoản tự đăng nhập/cấp quyền trên điện thoại, quay về app bằng luồng mới thành công; app nhận kết nối và tải danh sách model, hiển thị GPT-6.1-Sol.
+- [x] Gọi ChatGPT thật bằng câu hỏi mẫu không đính kèm tài liệu: nhận chính xác Hello VPIC1.
+- [x] Thu gọn/mở lại giữ hội thoại, model và bản nháp chưa gửi.
+- [x] Yêu cầu mẫu đếm 1–150 tiếp tục chạy khi bảng đóng; mở lại nhận đủ kết quả đến 150 và yêu cầu đã hoàn tất.
+- [x] Force-stop rồi mở app: khôi phục tài khoản và đúng model GPT-6.1-Sol, không yêu cầu đăng nhập lại. Không coi đây là kiểm chứng refresh token đã hết hạn.
+- [x] DOCX trên máy thật tải xong; thu bảng AI trở lại editor với trạng thái Lưu sẽ cập nhật file gốc.
+- Trong lượt kiểm tra AI không bấm lưu, không sửa file nguồn, không gửi nội dung tài liệu công ty lên ChatGPT. Chỉ dùng câu hỏi/văn bản mẫu.
+- Các nút Dừng/ngắt kết nối đã có mã và kiểm thử trạng thái ở mức unit/widget; chưa ghi nhận đầy đủ các ca Dừng/revoke bằng dịch vụ thật.
+
+### Chưa làm hoặc chưa nghiệm thu
+
+- [ ] Refresh token khi access token hết hạn thực tế; refresh thất bại/rotation; thu hồi quyền trên OpenAI và kết nối lại.
+- [ ] Timeout đăng nhập đủ 15 phút; lỗi mạng giữa đăng nhập/trao đổi token/tải model/streaming; tài khoản hết hạn mức hoặc không đủ quyền trên dịch vụ thật.
+- [ ] Hủy/Dừng trên kết nối thật, kiểm tra dọn tài nguyên và các trường hợp hệ thống đóng app/trình duyệt khác.
+- [ ] Đăng nhập/đổi giữa nhiều tài khoản hoặc workspace thuận tiện hơn; hiện đổi tài khoản bằng ngắt kết nối rồi kết nối lại.
+- [ ] Tự trích nội dung/vùng chọn chính xác từ DOCX, Sheets, Slides và PDF; dữ liệu bảng và định dạng có cấu trúc.
+- [ ] AI đề xuất diff, áp dụng sửa vào file, kiểm tra revision xung đột và hoàn tác; hiện chỉ đọc/sao chép phản hồi.
+- [ ] Lưu/khôi phục lịch sử chat và bản nháp sau khi đóng editor hoặc khởi động lại app.
+- [ ] Nghiệm thu AI đầy đủ trên XLSX/PPTX/PDF và các thiết bị/trình duyệt mục tiêu; test máy thật đợt này tập trung DOCX + chat.
+- [ ] Kết nối máy chủ AI công ty; tích hợp Claude/Gemini/Copilot hoặc nhà cung cấp khác. Chỉ tiếp tục theo phạm vi được chủ dự án yêu cầu.
+- [ ] Build và nghiệm thu APK release có thay đổi AI; APK release 1.0.0 đã build trước ngày 24/10 không bao gồm phần AI mới. Chưa có khóa ký phát hành riêng, cấu hình release vẫn dùng khóa debug.
+- [ ] Tích hợp/kiểm thử đăng nhập AI trên iOS; iOS tiếp tục tạm hoãn.
+
+### Phiên bản và source
+
+- Phiên bản dự án giữ 1.0.0+1; không thay applicationId com.example.gen_office_mobile.
+- Commit triển khai ban đầu: d2cd589; ghi nhận lần test Samsung đầu: 64f7fea; sửa vòng đời và nghiệm thu đăng nhập/chat thật: 820a056.
+- Công việc nằm trên nhánh dev, chưa đưa lên nhánh chính. Các lần push hiện bị lỗi Git Credential Manager/MSYS; commit đã lưu cục bộ, chưa xác nhận đồng bộ origin/dev.
+- Chi tiết kỹ thuật và nguồn chính thức: [ChatGPT Android](chatgpt-android.md). AI là phần mở rộng riêng, không tự đánh dấu hoàn tất các bước 2/4/5/8/9 còn hạng mục chưa nghiệm thu.
