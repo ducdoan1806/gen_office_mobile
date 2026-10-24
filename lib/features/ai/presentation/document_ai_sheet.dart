@@ -1,14 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import '../data/ai_document_edit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/chatgpt_client.dart';
+
+enum AiRequestPhase { readingDocument, waiting, receiving }
 
 class ChatMessage {
   ChatMessage(this.role, this.text, {this.complete = true});
   final String role;
   String text;
   bool complete;
+  String? wireText;
+  AiDocumentEdit? edit;
 }
 
 /// Owned by the editor, so dismissing the sheet doesn't cancel the request.
@@ -21,9 +26,36 @@ class DocumentChat extends ChangeNotifier {
   final input = TextEditingController();
   final messages = <ChatMessage>[];
   String attachment = '';
+  String? documentName;
+  bool applying = false;
+  Future<Map<String, dynamic>> Function()? readDocument;
+  Future<void> Function(Map<String, Object?>)? applyDocument;
+  Future<void> applyEdit(AiDocumentEdit edit) async {
+    if (busy || applying || edit.applied || disposed) return;
+    applying = true;
+    error = null;
+    notifyListeners();
+    try {
+      await applyDocument!(edit.payload);
+      edit.applied = true;
+    } catch (e) {
+      error = 'Không áp dụng được: $e';
+    } finally {
+      applying = false;
+      if (!disposed) notifyListeners();
+    }
+  }
+
   String? selectedModel;
   String? error, _subject;
   bool busy = false, loading = false, disposed = false;
+  AiRequestPhase? phase;
+  String? get progressLabel => switch (phase) {
+    AiRequestPhase.readingDocument => 'Đã nhận yêu cầu · Đang đọc tài liệu…',
+    AiRequestPhase.waiting => 'Đã nhận yêu cầu · Đang chờ ChatGPT…',
+    AiRequestPhase.receiving => 'AI đang trả lời…',
+    null => null,
+  };
   HttpClient? _transport;
   int _generation = 0;
   void _accountChanged() {
@@ -62,7 +94,9 @@ class DocumentChat extends ChangeNotifier {
   }
 
   Future<void> send() async {
-    if (busy || !client.connected || input.text.trim().isEmpty) return;
+    if (busy || applying || !client.connected || input.text.trim().isEmpty) {
+      return;
+    }
     final question = input.text.trim();
     if (question.length > 6000 || attachment.length > 20000) {
       error =
@@ -70,56 +104,114 @@ class DocumentChat extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final content = attachment.isEmpty
-        ? question
-        : '$question\n\nNội dung tham khảo do người dùng đính kèm:\n$attachment';
-    final history = messages
-        .where((m) => m.complete)
-        .map((m) => {'role': m.role, 'content': m.text})
-        .toList();
-    history.add({'role': 'user', 'content': content});
-    if (history.fold<int>(0, (n, m) => n + m['content']!.length) > 120000) {
-      error = 'Cuộc trò chuyện quá dài. Hãy tạo cuộc trò chuyện mới.';
-      notifyListeners();
-      return;
-    }
-    messages.add(ChatMessage('user', content));
-    final answer = ChatMessage('assistant', '', complete: false);
-    messages.add(answer);
-    input.clear();
-    error = null;
+    final hasDocument = readDocument != null;
     busy = true;
+    error = null;
     final generation = ++_generation;
     final transport = _transport = HttpClient()
       ..connectionTimeout = const Duration(seconds: 25);
+    final user = ChatMessage('user', question, complete: false);
+    final answer = ChatMessage('assistant', '', complete: false);
+    messages.addAll([user, answer]);
+    input.clear();
+    phase = hasDocument
+        ? AiRequestPhase.readingDocument
+        : AiRequestPhase.waiting;
     notifyListeners();
     try {
+      final snapshot = hasDocument ? await readDocument!() : null;
+      final context = snapshot == null
+          ? null
+          : <String, dynamic>{
+              ...snapshot,
+              'editable':
+                  applyDocument != null && snapshot['editable'] != false,
+              'name': documentName,
+            };
+      if (disposed || generation != _generation) return;
+      final content = context != null
+          ? AiDocumentEdit.prompt(question, context, attachment: attachment)
+          : attachment.isEmpty
+          ? question
+          : '$question\n\nNội dung tham khảo do người dùng đính kèm:\n$attachment';
+      final history = messages
+          .where((m) => m.complete)
+          .map(
+            (m) => {
+              'role': m.role,
+              'content': context == null ? (m.wireText ?? m.text) : m.text,
+            },
+          )
+          .toList();
+      history.add({'role': 'user', 'content': content});
+      if (history.fold<int>(0, (n, m) => n + m['content']!.length) > 120000) {
+        throw const ChatGptException(
+          'Cuộc trò chuyện quá dài. Hãy tạo cuộc trò chuyện mới.',
+        );
+      }
+      user.text = context == null
+          ? question
+          : "$question\n\n${context['scope']} · ${(context['entries'] as List).length} mục";
+      user.wireText = content;
+      phase = AiRequestPhase.waiting;
+      notifyListeners();
+      var response = '';
       await for (final delta in client.reply(
         history,
         transport: transport,
         modelId: selectedModel,
       )) {
-        if (disposed || generation != _generation) break;
-        answer.text += delta;
+        if (disposed || generation != _generation) return;
+        response += delta;
+        if (response.length > 160000) {
+          throw const ChatGptException(
+            'Kết quả quá lớn. Hãy chia nhỏ yêu cầu.',
+          );
+        }
+        phase = AiRequestPhase.receiving;
+        if (!hasDocument) answer.text = response;
         notifyListeners();
       }
-      if (generation == _generation) answer.complete = true;
+      if (generation == _generation) {
+        if (context != null) {
+          final edit = AiDocumentEdit.parse(response, context);
+          if (context['editable'] != true && edit.changes.isNotEmpty) {
+            throw const FormatException(
+              'Tài liệu chỉ đọc; không thể áp dụng thay đổi.',
+            );
+          }
+          if (edit.changes.isNotEmpty) answer.edit = edit;
+          answer.wireText = response;
+          answer.text = edit.summary;
+        }
+        answer.complete = true;
+        user.complete = true;
+      }
     } catch (e) {
       if (!disposed && generation == _generation) {
+        if (hasDocument) {
+          answer.text = 'Chưa xử lý xong yêu cầu với tài liệu.';
+        }
         error = e is ChatGptException
             ? e.message
+            : hasDocument
+            ? 'Không xử lý được tài liệu: $e'
             : 'Kết nối ChatGPT bị gián đoạn. Kiểm tra mạng và thử lại.';
       }
     } finally {
-      if (!answer.complete &&
-          generation == _generation &&
-          messages.length >= 2) {
-        messages[messages.length - 2].complete = false;
+      if (!answer.complete && generation == _generation) {
+        user.complete = false;
+        // Keep a failed question retryable without overwriting a newer draft.
+        if (input.text.isEmpty) input.text = question;
+        if (answer.text.isEmpty) {
+          answer.text = 'Yêu cầu chưa hoàn tất. Vui lòng thử lại.';
+        }
       }
       transport.close(force: true);
       if (generation == _generation) {
         _transport = null;
         busy = false;
+        phase = null;
       }
       if (!disposed) notifyListeners();
     }
@@ -130,6 +222,12 @@ class DocumentChat extends ChangeNotifier {
     _transport?.close(force: true);
     _transport = null;
     busy = false;
+    phase = null;
+    if (messages.isNotEmpty &&
+        !messages.last.complete &&
+        messages.last.text.isEmpty) {
+      messages.last.text = 'Đã dừng yêu cầu.';
+    }
     // An unanswered user turn must not be paired with the next request.
     if (messages.isNotEmpty &&
         !messages.last.complete &&
@@ -162,6 +260,7 @@ Future<void> showDocumentAi(
   DocumentChat session,
   String name,
 ) async {
+  session.documentName = name;
   unawaited(session.initialize());
   await showModalBottomSheet<void>(
     context: context,
@@ -191,6 +290,12 @@ class DocumentAiSheet extends StatefulWidget {
 class _DocumentAiSheetState extends State<DocumentAiSheet> {
   final _scroll = ScrollController();
   DocumentChat get s => widget.session;
+  @override
+  void initState() {
+    super.initState();
+    _scrollDown();
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -253,6 +358,72 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
     if (value != null && mounted) setState(() => s.attachment = value);
   }
 
+  Future<void> _preview(AiDocumentEdit edit) async {
+    FocusScope.of(context).unfocus();
+    await showDialog<void>(
+      context: context,
+      builder: (dialog) => AnimatedBuilder(
+        animation: s,
+        builder: (context, _) => AlertDialog(
+          title: const Text('Xem trước thay đổi AI'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(edit.summary),
+                  const SizedBox(height: 12),
+                  for (final c in edit.changes) ...[
+                    Text(
+                      c['label']!,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Text('Trước', style: TextStyle(color: Colors.red)),
+                    SelectableText(
+                      c['before']!.isEmpty ? '(trống)' : c['before']!,
+                    ),
+                    const Text('Sau', style: TextStyle(color: Colors.green)),
+                    SelectableText(c['after']!.isEmpty ? '(xóa)' : c['after']!),
+                    const Divider(),
+                  ],
+                  const Text(
+                    'Áp dụng vào editor; dùng Hoàn tác để hủy. Bấm Lưu trong tài liệu để cập nhật file gốc.',
+                  ),
+                  if (s.error != null)
+                    Text(
+                      s.error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: s.applying ? null : () => Navigator.pop(dialog),
+              child: const Text('Đóng'),
+            ),
+            if (!edit.applied)
+              FilledButton(
+                onPressed: s.applying || s.busy
+                    ? null
+                    : () async {
+                        await s.applyEdit(edit);
+                        if (edit.applied && dialog.mounted) {
+                          Navigator.pop(dialog);
+                        }
+                      },
+                child: Text(s.applying ? 'Đang áp dụng…' : 'Áp dụng'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _models() async {
     if (s.busy) return;
     final chosen = await showModalBottomSheet<String>(
@@ -292,13 +463,22 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
     builder: (context, _) {
       final client = s.client;
       final colors = Theme.of(context).colorScheme;
+      final compact =
+          MediaQuery.sizeOf(context).height -
+              MediaQuery.viewInsetsOf(context).bottom <
+          500;
       return AnimatedPadding(
         duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.only(
           bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
         child: SizedBox(
-          height: MediaQuery.sizeOf(context).height * .92,
+          height:
+              (MediaQuery.sizeOf(context).height -
+                      MediaQuery.viewInsetsOf(context).bottom -
+                      MediaQuery.paddingOf(context).top -
+                      40)
+                  .clamp(0.0, MediaQuery.sizeOf(context).height * .92),
           child: SafeArea(
             top: false,
             child: Column(
@@ -332,25 +512,28 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                     ],
                   ),
                 ),
-                ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(
-                    widget.documentName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                if (MediaQuery.viewInsetsOf(context).bottom == 0)
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(
+                      widget.documentName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      s.attachment.isEmpty
+                          ? (s.readDocument != null
+                                ? 'AI đang làm việc với tài liệu này'
+                                : 'Chưa đính kèm nội dung tài liệu')
+                          : 'Đã đính kèm ${s.attachment.length} ký tự',
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Đính kèm nội dung',
+                      onPressed: s.busy ? null : _attachment,
+                      icon: const Icon(Icons.attach_file),
+                    ),
                   ),
-                  subtitle: Text(
-                    s.attachment.isEmpty
-                        ? 'Chưa đính kèm nội dung tài liệu'
-                        : 'Đã đính kèm ${s.attachment.length} ký tự',
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Đính kèm nội dung',
-                    onPressed: s.busy ? null : _attachment,
-                    icon: const Icon(Icons.attach_file),
-                  ),
-                ),
                 if (s.loading) const LinearProgressIndicator(),
                 if (client.connecting && s.messages.isNotEmpty)
                   ListTile(
@@ -361,7 +544,7 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                       child: const Text('Hủy'),
                     ),
                   ),
-                if (client.connected)
+                if (!compact && client.connected)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -420,7 +603,7 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                   ),
                 Expanded(
                   child: s.messages.isEmpty
-                      ? Center(
+                      ? SingleChildScrollView(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
                             child: Column(
@@ -439,7 +622,9 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                                 const SizedBox(height: 8),
                                 Text(
                                   client.connected
-                                      ? 'Hỏi, dịch hoặc soạn lại nội dung. Chỉ nội dung bạn nhập và đính kèm được gửi đi.'
+                                      ? (s.readDocument != null
+                                            ? 'Bạn đang làm việc với tài liệu này. Hỏi, tóm tắt hoặc yêu cầu chỉnh sửa trực tiếp; nội dung tài liệu/vùng chọn được gửi tới ChatGPT cá nhân khi bấm Gửi. Thay đổi sẽ có bản xem trước để bạn duyệt.'
+                                            : 'Hỏi, dịch hoặc soạn lại nội dung. Nội dung bạn nhập và đính kèm được gửi đi.')
                                       : 'Kết nối tài khoản ChatGPT cá nhân bằng trình duyệt. Không cần nhập API key.',
                                   textAlign: TextAlign.center,
                                 ),
@@ -498,11 +683,61 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                    SelectableText(
-                                      message.text.isEmpty
-                                          ? 'Đang trả lời…'
-                                          : message.text,
-                                    ),
+                                    if (message.text.isNotEmpty)
+                                      SelectableText(message.text),
+                                    if (!user &&
+                                        s.busy &&
+                                        identical(message, s.messages.last))
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          top: message.text.isEmpty ? 8 : 12,
+                                        ),
+                                        child: Semantics(
+                                          liveRegion: true,
+                                          child: Row(
+                                            key: const Key('ai-waiting'),
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Flexible(
+                                                child: Text(
+                                                  s.progressLabel ??
+                                                      'Đang xử lý…',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    if (message.complete &&
+                                        message.edit != null) ...[
+                                      Text(
+                                        '${message.edit!.changes.length} thay đổi đề xuất',
+                                      ),
+                                      if (message.edit!.changes.isNotEmpty)
+                                        TextButton.icon(
+                                          onPressed: () =>
+                                              _preview(message.edit!),
+                                          icon: Icon(
+                                            message.edit!.applied
+                                                ? Icons.check
+                                                : Icons.preview_outlined,
+                                          ),
+                                          label: Text(
+                                            message.edit!.applied
+                                                ? 'Đã áp dụng · xem chi tiết'
+                                                : 'Xem trước thay đổi',
+                                          ),
+                                        ),
+                                    ],
                                     if (!user && message.text.isNotEmpty)
                                       IconButton(
                                         tooltip: 'Sao chép nội dung',
@@ -518,56 +753,93 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                           },
                         ),
                 ),
-                if (s.error != null)
+                if (s.error != null && !compact)
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    child: Text(
-                      s.error!,
-                      style: TextStyle(color: colors.error),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 64),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          s.error!,
+                          style: TextStyle(color: colors.error),
+                        ),
+                      ),
                     ),
                   ),
-                if (s.busy)
+                if (s.busy && !compact)
                   TextButton.icon(
                     onPressed: s.stop,
                     icon: const Icon(Icons.stop_circle_outlined),
                     label: const Text('Dừng trả lời'),
                   ),
                 Padding(
+                  key: const ValueKey('ai-composer'),
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                   child: TextField(
+                    key: const Key('ai-input'),
                     controller: s.input,
                     minLines: 1,
-                    maxLines: 4,
+                    maxLines: compact
+                        ? 1
+                        : MediaQuery.viewInsetsOf(context).bottom > 0
+                        ? 2
+                        : 4,
                     maxLength: 6000,
-                    enabled: client.connected && !s.loading,
+                    enabled: client.connected && !s.loading && !s.applying,
                     decoration: InputDecoration(
                       counterText: '',
-                      hintText: 'Bạn muốn làm gì với tài liệu?',
+                      hintText: compact && s.error != null
+                          ? s.error
+                          : 'Bạn muốn làm gì với tài liệu?',
                       border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        key: const Key('send-ai'),
-                        tooltip: 'Gửi',
-                        onPressed: s.busy || !client.connected || s.loading
-                            ? null
-                            : () {
-                                unawaited(s.send().then((_) => _scrollDown()));
-                                _scrollDown();
-                              },
-                        icon: const Icon(Icons.arrow_upward),
+                      suffixIcon: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (s.busy)
+                              const SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            IconButton(
+                              key: const Key('send-ai'),
+                              tooltip: s.busy ? 'Dừng trả lời' : 'Gửi',
+                              onPressed: s.busy
+                                  ? s.stop
+                                  : !client.connected || s.loading || s.applying
+                                  ? null
+                                  : () {
+                                      unawaited(
+                                        s.send().then((_) => _scrollDown()),
+                                      );
+                                      _scrollDown();
+                                    },
+                              icon: Icon(
+                                s.busy ? Icons.stop : Icons.arrow_upward,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'AI có thể sai. Kiểm tra trước khi dùng.',
-                    style: TextStyle(fontSize: 11),
+                if (!compact)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'AI có thể sai. Kiểm tra trước khi dùng.',
+                      style: TextStyle(fontSize: 11),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

@@ -31,10 +31,32 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   String? _error;
   bool _rendered = false;
   Timer? _timeout;
+  int _aiSequence = 0;
+  final _aiPending = <String, Completer<Map<String, dynamic>>>{};
 
   @override
   void initState() {
     super.initState();
+    _chat.readDocument = () async {
+      if (!_rendered || _controller == null || _error != null) {
+        throw StateError('Chờ PDF mở xong.');
+      }
+      final id = 'pdf-ai-${++_aiSequence}';
+      final pending = Completer<Map<String, dynamic>>();
+      _aiPending[id] = pending;
+      final response = pending.future.timeout(const Duration(seconds: 60));
+      unawaited(
+        response.then<void>((_) {}, onError: (Object _, StackTrace __) {}),
+      );
+      try {
+        await _controller!.runJavaScript(
+          'void window.genOfficePdfAiContext(${jsonEncode(id)});',
+        );
+        return await response;
+      } finally {
+        _aiPending.remove(id);
+      }
+    };
     unawaited(_initialize());
   }
 
@@ -85,7 +107,18 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
           if (!mounted) return;
           try {
             final event = jsonDecode(message.message) as Map<String, dynamic>;
-            if (event['type'] == 'rendered') {
+            if (event['type'] == 'aiContext') {
+              final pending = _aiPending.remove(event['id']);
+              if (pending != null && !pending.isCompleted) {
+                event['error'] != null
+                    ? pending.completeError(
+                        StateError(event['error'].toString()),
+                      )
+                    : pending.complete(
+                        Map<String, dynamic>.from(event['value'] as Map),
+                      );
+              }
+            } else if (event['type'] == 'rendered') {
               _timeout?.cancel();
               setState(() => _rendered = true);
             } else if (event['type'] == 'error') {
@@ -133,6 +166,10 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   @override
   void dispose() {
     _chat.dispose();
+    for (final pending in _aiPending.values) {
+      pending.completeError(StateError('PDF đã đóng.'));
+    }
+    _aiPending.clear();
     _timeout?.cancel();
     final server = _server;
     if (server != null) unawaited(server.close());

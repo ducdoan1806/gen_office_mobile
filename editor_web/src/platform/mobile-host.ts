@@ -42,7 +42,7 @@ export function installMobileHost(host: ReturnType<typeof installBrowserHost>): 
  win.genOfficeMobile = {async receive(command) {
    try {
      if (!command || typeof command.id !== 'string') throw new Error('Invalid command');
-     if (!['open','save','saveAs','undo','redo','status','new','snapshot'].includes(command.method)) throw new Error('Unsupported command');
+     if (!['open','save','saveAs','undo','redo','status','new','snapshot','aiContext','aiApply'].includes(command.method)) throw new Error('Unsupported command');
      if(command.method==='open') {
        const args=command.args!;
        command={...command,args:{file:{path:`mobile://${String(args.documentId)}`,name:String(args.name),dataUrl:localUrl(args.url),hash:'',recovered:args.recovered===true}}};

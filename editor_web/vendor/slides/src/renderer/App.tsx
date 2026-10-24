@@ -3271,6 +3271,14 @@ export function App() {
       case 'saveAs':
           await saveAs();
           return;
+      case 'aiContext':
+          await fileActions.flushActiveEdit(ctxRef.current);
+          return (window.slidesApi as any).mobileAiContext(current);
+      case 'aiApply':
+          await fileActions.flushActiveEdit(ctxRef.current);
+          setSlides(await (window.slidesApi as any).mobileAiApply(command.args));
+          setDirty(true);
+          return true;
       case 'status': return { dirty: dirty || !!editing || !!editingCell || await window.slidesApi.isDirty() };
       case 'snapshot':
           await fileActions.flushActiveEdit(ctxRef.current);

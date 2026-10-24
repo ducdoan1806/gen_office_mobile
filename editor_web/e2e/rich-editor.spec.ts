@@ -29,7 +29,7 @@ test('original React/Tiptap renderer: open, rich edit, table edit, undo/redo, ex
  expect(xml).toContain('ca mới');expect(xml).toContain('Đoạn thêm mới');expect(xml).toContain('cập nhật');expect(xml).toMatch(/<w:i(?:\s|\/|>)/);
  expect(await zip.file('customXml/item1.xml')!.async('string')).toBe('<factory>keep-me</factory>');
  await page.evaluate(()=>{for(const element of document.querySelectorAll<HTMLElement>('*')){if(element.scrollTop)element.scrollTop=0;}});
- await page.screenshot({path:'/private/tmp/genoffice-rich-editor.png',fullPage:true});
+ await page.screenshot({path:test.info().outputPath('genoffice-rich-editor.png'),fullPage:true});
  // Reload starts a fresh browser session and validates the actual exported bytes.
  page.on('dialog',dialog=>dialog.accept());
  await page.reload();await expect(page.locator('.ProseMirror[contenteditable="true"]').first()).toBeVisible();
