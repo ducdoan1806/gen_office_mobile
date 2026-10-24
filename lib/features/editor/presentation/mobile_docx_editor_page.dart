@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../ai/presentation/document_ai_sheet.dart';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,8 @@ import '../../documents/data/document_file_picker.dart';
 import '../../pdf/presentation/pdf_viewer_page.dart';
 import '../../documents/data/android_document_files.dart';
 import '../../documents/data/legacy_doc_converter.dart';
+import '../../documents/data/csv_workbook_codec.dart';
+import 'dart:isolate';
 import '../data/editor_asset_server.dart';
 import '../data/document_recovery_store.dart';
 import '../data/webview_document_editor_bridge.dart';
@@ -51,6 +54,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     with WidgetsBindingObserver {
   WebViewDocumentEditorBridge? _bridge;
   StreamSubscription<EditorSaveResult>? _saved;
+  final _chat = DocumentChat();
   bool _viewCreated = false, _busy = true, _allowPop = false;
   bool _saving = false, _checkpointing = false;
   Timer? _checkpointTimer;
@@ -58,6 +62,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
   OfficeDocument? _recoveryTarget;
   String? _baseHash;
   bool _sourceConflict = false;
+  String? _confirmedCsvId;
   late final _recovery = widget.recoveryStore ?? DocumentRecoveryStore();
   bool get _working => _busy || _saving || _checkpointing;
   String? _error;
@@ -104,6 +109,32 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
 
   Future<EditorSaveResult> _persistCurrent(String name, Uint8List bytes) async {
     final previousId = _currentDocument.id;
+    if (_currentDocument.sourceExtension == 'csv' &&
+        _confirmedCsvId != previousId) {
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Lưu dữ liệu CSV'),
+          content: const Text(
+            'CSV chỉ lưu giá trị trong một sheet, không giữ định dạng và công thức. Chọn Lưu thành bản mới nếu muốn giữ đầy đủ trong XLSX.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Lưu CSV'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true) {
+        throw StateError('Đã hủy lưu CSV. Bản tạm vẫn được giữ.');
+      }
+      _confirmedCsvId = previousId;
+    }
     if (_sourceConflict && !await _confirmSourceOverwrite()) {
       throw StateError('Chưa lưu. Bản tạm khôi phục vẫn được giữ lại.');
     }
@@ -112,14 +143,15 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     if (Platform.isAndroid && sourceUri == null) {
       if (mounted) setState(() => _status = 'Chọn file gốc để lưu thay đổi');
       final target = await const AndroidDocumentFiles().pick(
-        allDocuments: _currentDocument.legacyDoc,
-        format: _currentDocument.format.name,
+        allDocuments: _currentDocument.needsConversion,
+        format: _currentDocument.sourceExtension,
       );
       if (target == null) throw StateError('Chưa lưu: bạn chưa chọn file gốc.');
-      if (_currentDocument.legacyDoc &&
-          !target.name.toLowerCase().endsWith('.doc')) {
+      if (!target.name.toLowerCase().endsWith(
+        '.${_currentDocument.sourceExtension}',
+      )) {
         throw StateError(
-          'Hãy chọn file DOC gốc, hoặc dùng Lưu thành bản mới để xuất DOCX.',
+          'Hãy chọn đúng định dạng file gốc, hoặc dùng Lưu thành bản mới.',
         );
       }
       sourceUri = target.sourceUri;
@@ -306,18 +338,25 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     }
     final bytes = pending != null
         ? await pending.read()
-        : document.legacyDoc && document.sourceUri != null
-        ? await const LegacyDocConverter().toDocx(original!)
+        : document.needsConversion && document.sourceUri != null
+        ? document.sourceExtension == 'csv'
+              ? await Isolate.run(() => CsvWorkbookCodec.toXlsx(original!))
+              : await const LegacyDocConverter().convertOffice(
+                  original!,
+                  document.sourceExtension,
+                  document.format.name,
+                )
         : original!;
     final sourceHash = original == null
         ? null
-        : document.legacyDoc && document.sourceUri == null
+        : document.needsConversion && document.sourceUri == null
         ? document.sourceHash ?? DocumentRecoveryStore.hash(original)
         : DocumentRecoveryStore.hash(original);
     await _bridge!.open(
       EditorDocument(id: document.id, name: document.editorName, bytes: bytes),
       recovered: pending != null,
     );
+    if (_currentDocument.id != document.id) _chat.clear();
     _currentDocument = document;
     _name = document.name;
     _baseHash = pending != null ? pending.baseHash : sourceHash;
@@ -546,6 +585,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
 
   @override
   void dispose() {
+    _chat.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _checkpointTimer?.cancel();
     unawaited(_saved?.cancel());
@@ -572,13 +612,31 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
           ),
           IconButton(
             key: const Key('save-docx'),
-            tooltip: 'Lưu ${_currentDocument.format.name.toUpperCase()}',
+            tooltip: 'Lưu',
             onPressed: _working || _error != null
                 ? null
                 : () => _perform(() async {
                     await _bridge!.save();
                   }),
             icon: const Icon(Icons.save_outlined),
+          ),
+          PopupMenuButton<String>(
+            key: const Key('document-actions'),
+            tooltip: 'Thêm',
+            enabled: !_working && _error == null,
+            onSelected: (_) => _perform(() async {
+              await _bridge!.saveAs();
+            }),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'saveAs',
+                child: ListTile(
+                  leading: Icon(Icons.save_as_outlined),
+                  title: Text('Lưu thành bản mới'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -626,6 +684,12 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
                         ? null
                         : () => _perform(() => _bridge!.redo()),
                     icon: const Icon(Icons.redo),
+                  ),
+                  IconButton(
+                    key: const Key('open-ai'),
+                    tooltip: 'Trợ lý AI',
+                    onPressed: () => showDocumentAi(context, _chat, _name),
+                    icon: const Icon(Icons.auto_awesome_outlined),
                   ),
                   Expanded(
                     child: Padding(

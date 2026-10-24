@@ -63,6 +63,7 @@ tasks.named("preBuild") { dependsOn(checkOfficeRuntime) }
 
 
 dependencies {
+    implementation("androidx.browser:browser:1.9.0")
     // Match Flutter integration_test's debug runtime constraints.
     androidTestImplementation("androidx.test:runner:1.3.0")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.2.0")

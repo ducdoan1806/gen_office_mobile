@@ -8,9 +8,10 @@ test('mobile protocol transfers DOCX bytes and reports native save failure',asyn
   (window as any).GenOfficeHost={postMessage:(value:string)=>(window as any).nativeMessages.push(JSON.parse(value))};
  });
  await page.route('**/documents/sample',async route=>route.fulfill({body:Buffer.from(await fixture()),contentType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
- let output:Buffer|undefined;let failSave=false;
+ let output:Buffer|undefined;let failSave=false;let mode:string|null=null;
  await page.route('**/exports?*',async route=>{
   output=route.request().postDataBuffer()!;
+  mode=new URL(route.request().url()).searchParams.get('mode');
   await route.fulfill({status:failSave?500:200,contentType:'application/json',body:JSON.stringify(failSave?{ok:false,error:'Disk full'}:{ok:true,name:'factory.docx',path:'/app/factory.docx'})});
  });
  await page.goto('/?mobile=1');
@@ -26,6 +27,8 @@ test('mobile protocol transfers DOCX bytes and reports native save failure',asyn
  const paragraph=editor.locator('p').filter({hasText:'Xin chào nhà máy'}).first();await paragraph.click();await page.keyboard.press('End');await page.keyboard.insertText(' native bridge');
  const saved=await command('save');expect(saved.ok).toBe(true);
  const zip=await JSZip.loadAsync(output!);expect(await zip.file('word/document.xml')!.async('string')).toContain('native bridge');
+ await expect(page.locator('.ribbon-tabs .qa-btn:visible,.ribbon-tabs .autosave-toggle:visible')).toHaveCount(0);
+ expect((await command('saveAs')).ok).toBe(true);expect(mode).toBe('copy');
  await paragraph.click();await page.keyboard.press('End');await page.keyboard.insertText(' pending');
  failSave=true;const failure=await command('save');expect(failure.ok).toBe(false);
  expect((await command('status')).value.dirty).toBe(true);

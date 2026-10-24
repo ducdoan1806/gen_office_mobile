@@ -15,6 +15,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
+    private var chatGptBrowser: ChatGptBrowser? = null
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var pending: MethodChannel.Result? = null
@@ -26,6 +27,7 @@ class MainActivity : FlutterActivity() {
     private val maxBytes = 32 * 1024 * 1024
 
     override fun onDestroy() {
+        chatGptBrowser?.close()
         pending?.error("closed", "Đã đóng trình chọn file.", null)
         pending = null
         io.shutdown()
@@ -34,6 +36,39 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        val chatGpt = ChatGptPlatform(applicationContext)
+        val authBrowser = ChatGptBrowser(this)
+        chatGptBrowser = authBrowser
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vpic1/chatgpt")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "openBrowser") {
+                    try { authBrowser.open(requireNotNull(call.argument<String>("url")), result) }
+                    catch (_: Exception) { result.error("browser", "Không mở được trình duyệt để đăng nhập ChatGPT.", null) }
+                } else if (call.method == "closeBrowser") {
+                    authBrowser.close(); result.success(null)
+                } else if (call.method in listOf("read", "write", "verifyIdToken")) {
+                    background(result, "Không xác thực hoặc lưu được kết nối ChatGPT. Vui lòng thử lại.") {
+                        when (call.method) {
+                            "read" -> chatGpt.read()
+                            "write" -> { chatGpt.write(requireNotNull(call.argument<String>("value"))); null }
+                            else -> chatGpt.verify(requireNotNull(call.argument<String>("token")),
+                                requireNotNull(call.argument<String>("clientId")),
+                                requireNotNull(call.argument<String>("nonce")))
+                        }
+                    }
+                } else result.notImplemented()
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/app_info")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "getAppInfo") result.notImplemented()
+                else {
+                    @Suppress("DEPRECATION")
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    @Suppress("DEPRECATION")
+                    val build = if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+                    result.success(mapOf("version" to info.versionName, "buildNumber" to build.toString()))
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/document_files")
             .setMethodCallHandler(::handleDocumentCall)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/doc_conversion")
@@ -42,10 +77,11 @@ class MainActivity : FlutterActivity() {
                 else if (!java.io.File(applicationInfo.nativeLibraryDir, "liblo-native-code.so").isFile) {
                     result.error("unsupported_abi", "Bản chuyển đổi DOC hiện hỗ trợ Android ARM64 và x86_64.", null)
                 }
-                else background(result, "Không chuyển đổi được DOC. File gốc chưa được ghi thay đổi. Hãy kiểm tra file không bị hỏng hoặc có mật khẩu.") {
+                else background(result, "Không chuyển đổi được tài liệu Office. File gốc chưa được ghi thay đổi. Hãy kiểm tra file không bị hỏng hoặc có mật khẩu.") {
                     DocConversionClient(applicationContext).convert(
                         requireNotNull(call.argument<ByteArray>("bytes")),
-                        requireNotNull(call.argument<String>("target"))
+                        requireNotNull(call.argument<String>("target")),
+                        call.argument<String>("source") ?: if(call.argument<String>("target") == "docx") "doc" else "docx"
                     )
                 }
             }
@@ -59,13 +95,13 @@ class MainActivity : FlutterActivity() {
                 } else {
                     creating = call.method == "create"
                     openingExtension = if(creating) (call.argument<String>("name") ?: "document.docx").substringAfterLast('.').lowercase() else call.argument<String>("format") ?: "docx"
-                    require(openingExtension in listOf("docx","doc","pdf","xlsx","pptx","all"))
+                    require(openingExtension in listOf("docx","doc","pdf","xlsx","pptx","xls","ppt","csv","all"))
                     openingPdf = !creating && call.argument<String>("format") == "pdf"
                     openingAll = !creating && call.argument<String>("format") == "all"
                     val intent = Intent(if (creating) Intent.ACTION_CREATE_DOCUMENT else Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
-                        type = when { openingAll -> "*/*"; openingExtension=="pdf" -> "application/pdf"; openingExtension=="xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; openingExtension=="pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"; else -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }
-                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"))
+                        type = when { openingExtension=="xls" -> "application/vnd.ms-excel"; openingExtension=="ppt" -> "application/vnd.ms-powerpoint"; openingExtension=="csv" -> "text/csv"; openingExtension=="doc" -> "application/msword"; openingAll -> "*/*"; openingExtension=="pdf" -> "application/pdf"; openingExtension=="xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; openingExtension=="pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"; else -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }
+                        if (openingAll) putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/vnd.ms-excel", "application/vnd.ms-powerpoint", "text/csv", "text/comma-separated-values", "application/csv", "text/plain", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"))
                         addFlags((if (openingPdf) Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags) or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
                         if (creating) putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "document.docx")
                     call.argument<String>("initialUri")?.let {
@@ -143,7 +179,7 @@ class MainActivity : FlutterActivity() {
                 if (cursor.moveToFirst()) name = cursor.getString(0)
             }
             val extension = name.substringAfterLast('.', "").lowercase()
-            require(if (isAll) extension in listOf("docx", "pdf", "doc", "xlsx", "pptx") else extension == expectedExtension) { "Loại file không hợp lệ." }
+            require(if (isAll) extension in listOf("docx", "pdf", "doc", "xlsx", "pptx", "xls", "ppt", "csv") else extension == expectedExtension) { "Loại file không hợp lệ." }
             val granted = data.flags and accessFlags
             val required = if (extension == "pdf") Intent.FLAG_GRANT_READ_URI_PERMISSION else accessFlags
             require(granted and required == required) { "File thiếu quyền truy cập cần thiết." }

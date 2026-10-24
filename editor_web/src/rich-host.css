@@ -7,6 +7,10 @@ body {height:100dvh;display:flex;flex-direction:column;margin:0;} #root {flex:1;
 .ribbon-group:has(.ai-entry) {display:none!important;}
 
 html[data-host="mobile"] #browser-host {display:none;}
+/* Native controls own save/copy and history on mobile. */
+html[data-host="mobile"] .ribbon-tabs .qa-btn,
+html[data-host="mobile"] .ribbon-tabs .autosave-toggle,
+html[data-host="mobile"] .ribbon-tabs .qa-sep {display:none!important;}
 html[data-host="mobile"] .ribbon-tabs {
   overflow-x:auto;
   touch-action:pan-x;

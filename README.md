@@ -1,8 +1,10 @@
-# GenOffice Mobile
+# VPIC1 Office
+
+Ứng dụng làm việc với tài liệu nội bộ VPIC1, dành cho cán bộ, nhân viên Công ty VPIC1 trên Android. Mở biểu tượng **ⓘ Giới thiệu** ở màn hình chính để xem mô tả, phiên bản APK và giấy phép phần mềm. Icon nguồn nằm tại `assets/branding/app_icon_1024.png`; tạo lại icon Android (legacy bo góc, Adaptive Icon và splash bo góc 25%) bằng `tool/generate_android_icons.ps1` trên Windows.
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
-Android có một nút **Mở tài liệu** cho DOCX, DOC, PDF, XLSX và PPTX. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF dùng App/ribbon gốc GenOffice, chạy offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX và PPTX dùng nguyên App/ribbon từ source GenOffice như DOCX: lưới/thanh công thức/sheet tabs của Sheets, canvas/danh sách slide/ghi chú của Slides. Có lưu nguồn, undo/redo và bản phục hồi; các công cụ nâng cao desktop chưa được chuyển đầy đủ. Xem [Sheets/Slides Android](docs/sheets-slides-android.md). Ưu tiên Android; iOS hiện tạm hoãn.
+Android có một nút **Mở tài liệu** cho DOCX, DOC, PDF, XLS/XLSX, PPT/PPTX và CSV. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF dùng App/ribbon gốc GenOffice, chạy offline để xem, tìm chữ và điều hướng trang. AI nhà máy vẫn là mock/stub. ChatGPT cá nhân trên Android đã có bảng chat và luồng SIWC chính thức, cần nghiệm thu tài khoản thật trước phân phối; xem [ChatGPT Android](docs/chatgpt-android.md). XLSX và PPTX dùng nguyên App/ribbon từ source GenOffice như DOCX: lưới/thanh công thức/sheet tabs của Sheets, canvas/danh sách slide/ghi chú của Slides. Có lưu nguồn, undo/redo và bản phục hồi; các công cụ nâng cao desktop chưa được chuyển đầy đủ. Xem [Sheets/Slides Android](docs/sheets-slides-android.md). Ưu tiên Android; iOS hiện tạm hoãn.
 
 ## 1. Chuẩn bị môi trường
 
@@ -72,7 +74,7 @@ Nếu chỉ kết nối một thiết bị phù hợp, có thể dùng `flutter 
 ### Thử chỉnh sửa DOCX
 
 1. Bấm **Mở tài liệu**, chọn file trong Downloads hoặc thư mục khác bằng trình chọn tệp Android.
-2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn DOCX/DOC/PDF/XLSX/PPTX khác từ thiết bị; app tự mở đúng màn hình và hỏi nếu có thay đổi chưa lưu.
+2. Dùng biểu tượng **thư mục** trên thanh Flutter để chọn DOCX/DOC/PDF/XLS/XLSX/PPT/PPTX/CSV khác từ thiết bị; app tự mở đúng màn hình và hỏi nếu có thay đổi chưa lưu.
 3. Chỉnh sửa trong editor; thanh menu có thể cuộn ngang và nhãn không xuống dòng.
 4. Dùng các nút **undo/redo** để hoàn tác/làm lại.
 5. Bấm biểu tượng **lưu** để cập nhật chính file đã chọn. Dòng trạng thái xác nhận lưu vào file gốc khi ghi và đọc lại xác minh thành công.
@@ -174,7 +176,7 @@ flutter test
 Kiểm thử WebView thực tế trên Android emulator:
 
 ```sh
-flutter test integration_test/docx_webview_test.dart -d <device-id> --reporter expanded
+flutter test integration_test/docx_webview_test.dart -d <device-id> --no-uninstall --reporter expanded
 ```
 
 Kiểm thử editor web (cần cài dependency bằng `npm ci` trước):
@@ -233,7 +235,7 @@ Chi tiết: [bridge mobile](docs/mobile-webview.md), [tách editor khỏi Electr
 - DOCX đã có bản tạm và phục hồi sau mất tiến trình; chỉ bảo vệ đến checkpoint hoàn chỉnh gần nhất. File nguồn Android được lưu qua SAF; cache và bản tạm riêng có thể mất khi gỡ ứng dụng. Xem [khôi phục phiên](docs/session-recovery.md).
 - Ribbon gốc đã hỗ trợ cuộn ngang; vẫn cần tối ưu cảm ứng và kiểm tra trên nhiều điện thoại thật.
 - Các tích hợp Electron như Zotero, CLI/MCP, mã hóa file và xuất PDF native chưa được chuyển sang mobile.
-- AI chưa kết nối. App dùng loopback trên chính thiết bị để phục vụ editor; không cần API AI hoặc web server bên ngoài cho việc chỉnh sửa DOCX.
+- AI nhà máy chưa kết nối; ChatGPT cá nhân cần Internet và tài khoản được cấp quyền SIWC. App dùng loopback trên chính thiết bị để phục vụ editor; không cần API AI hoặc web server bên ngoài cho việc chỉnh sửa DOCX.
 
 ## Source control và license
 
@@ -277,3 +279,5 @@ flutter build ios --simulator --debug
 Khi chạy bằng Xcode, mở `ios/Runner.xcworkspace` để có đầy đủ CocoaPods.
 
 Ứng dụng cũng đã khai báo `UIApplicationSceneManifest` với `FlutterSceneDelegate`, và `AppDelegate` đăng ký plugin bằng callback `FlutterPluginRegistrant` tương thích Flutter 3.35. Đây là phần cần thiết để app build bằng SDK iOS 27 không crash lúc mở. Xem [hướng dẫn xử lý build iOS](docs/ios-build.md).
+
+XLS/PPT chuyển đổi offline hai chiều bằng runtime có sẵn; CSV hỗ trợ Unicode và giữ dấu phân cách. Lưu ghi đè file nguồn cùng định dạng, Save As xuất XLSX/PPTX. Lưới Excel hỗ trợ vuốt một ngón khóa hướng, quán tính, chạm chọn ô, chạm hai lần sửa và giữ kéo chọn vùng. Xem [định dạng cũ, CSV và cảm ứng](docs/legacy-office-formats.md) để biết giới hạn.

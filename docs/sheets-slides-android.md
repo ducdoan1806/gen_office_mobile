@@ -13,7 +13,7 @@ Bản Android tải trực tiếp `App`, entrypoint React, CSS, ribbon và các 
 
 ## Luồng tài liệu
 
-Một nút **Mở tài liệu** nhận DOC/DOCX/PDF/XLSX/PPTX. Lưu ghi đè URI nguồn đang mở; Lưu thành bản mới chọn đích bằng Android. XLSX/PPTX giữ định dạng, có undo/redo và bản tạm phục hồi. Lưu không thay đổi giữ byte gốc. Chưa hỗ trợ tạo một tài liệu XLSX/PPTX mới từ menu desktop; không dùng thao tác này để ghi đè tài liệu nguồn đang mở.
+Một nút **Mở tài liệu** nhận DOC/DOCX/PDF/XLS/XLSX/PPT/PPTX/CSV. Xem [định dạng cũ và CSV](legacy-office-formats.md). Lưu ghi đè URI nguồn đang mở; Lưu thành bản mới chọn đích bằng Android. XLSX/PPTX giữ định dạng, có undo/redo và bản tạm phục hồi. Với XLSX/PPTX, Lưu không thay đổi giữ byte gốc; XLS/PPT dùng chuyển đổi định dạng. Chưa hỗ trợ tạo một tài liệu XLSX/PPTX mới từ menu desktop; không dùng thao tác này để ghi đè tài liệu nguồn đang mở.
 
 Đây là port giao diện gốc, chưa phải toàn bộ dịch vụ desktop: chưa có Rust streaming/IronCalc fallback, importer metadata XLSX nâng cao (biểu đồ, pivot, điều kiện, validation, liên kết và theme) chưa đầy đủ; các phần ZIP không sửa được giữ lại khi lưu. Các công cụ hình ảnh/biểu đồ/animation/xuất/in và tích hợp hệ điều hành chưa được nghiệm thu đầy đủ. AI và iOS tiếp tục hoãn.
 
@@ -26,3 +26,5 @@ Sau đổi giao diện, 9 ca riêng biệt trên Samsung Android 16 đạt: 2 XL
 ## Nguồn và giấy phép
 
 Source vendored giữ Apache-2.0, NOTICE và Unicode license trong `editor_web/vendor`. Các patch tích hợp được ghi trong [VENDOR.md](../editor_web/VENDOR.md). `assets/editor/THIRD-PARTY-LICENSES.txt` được tạo lại khi đóng gói. Runtime, worker, font, CMap và WASM nằm trong APK; không tải thư viện từ CDN.
+
+23/10/2026: bộ cảm ứng và XLS/PPT/CSV đã bổ sung; xem [luồng định dạng và cảm ứng](legacy-office-formats.md). Bộ tổng hợp Android đạt 13 ca, gồm ba định dạng mới và DOC/DOCX/PDF hồi quy; 51 test Flutter, 8 web/engine, 5 trình duyệt production và analyze đạt. Các giới hạn nâng cao/đối chiếu Office vẫn giữ nguyên.

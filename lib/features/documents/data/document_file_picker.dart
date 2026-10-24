@@ -8,10 +8,22 @@ Future<XFile?> pickOfficeFile() => Platform.isAndroid
         acceptedTypeGroups: const [
           XTypeGroup(
             label: 'Tài liệu',
-            extensions: ['docx', 'pdf', 'doc', 'xlsx', 'pptx'],
+            extensions: [
+              'docx',
+              'pdf',
+              'doc',
+              'xlsx',
+              'pptx',
+              'xls',
+              'ppt',
+              'csv',
+            ],
             mimeTypes: [
               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               'application/pdf',
+              'application/vnd.ms-excel',
+              'application/vnd.ms-powerpoint',
+              'text/csv',
               'application/msword',
               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
               'application/vnd.openxmlformats-officedocument.presentationml.presentation',

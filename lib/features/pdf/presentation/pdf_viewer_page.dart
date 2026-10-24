@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../ai/presentation/document_ai_sheet.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -24,6 +25,7 @@ class PdfViewerPage extends StatefulWidget {
 }
 
 class _PdfViewerPageState extends State<PdfViewerPage> {
+  final _chat = DocumentChat();
   WebViewController? _controller;
   EditorAssetServer? _server;
   String? _error;
@@ -130,6 +132,7 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
 
   @override
   void dispose() {
+    _chat.dispose();
     _timeout?.cancel();
     final server = _server;
     if (server != null) unawaited(server.close());
@@ -138,6 +141,11 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    floatingActionButton: FloatingActionButton.small(
+      tooltip: 'Trợ lý AI',
+      onPressed: () => showDocumentAi(context, _chat, widget.document.name),
+      child: const Icon(Icons.auto_awesome_outlined),
+    ),
     appBar: AppBar(
       title: Text(
         widget.document.name,

@@ -62,3 +62,25 @@ Hai điều chỉnh phát hiện khi kiểm thử mobile: chỉ báo PDF nhận 
 Kết quả WebView trên Samsung SM-A075F/Android 16/ARM64 sau đổi giao diện: **9 ca riêng biệt đều đạt** — 2 XLSX/PPTX, 3 PDF và 4 DOCX hồi quy. Các ca XLSX/PPTX kiểm tra nội dung undo/redo, tạo bản phục hồi tự động, lưu nguồn qua provider mô phỏng, mở lại và giữ các phần ZIP không sửa. PDF kiểm tra chuyển thumbnail tới trang cuối, tìm cụm chữ, nhiều kết quả/không có kết quả, tô sáng, file hỏng và byte nguồn không đổi. Luồng PowerPoint còn kiểm tra chốt đoạn chữ khi DOM mất focus trước bản phục hồi. Ba ca PDF được chạy riêng sau khi sửa scope biến trong script nhập truy vấn của test harness.
 
 Đã build APK thường từ `lib/main.dart`, xác minh manifest editor trong APK trùng bản hiện tại và không chứa entrypoint integration. Không gỡ app/clear data trong quá trình cài đè.
+
+## XLS/PPT/CSV và cảm ứng Excel — 23/10/2026
+
+51 unit/widget test Flutter, 8 test web/engine, 5 Playwright production và Dart analyze đạt. Playwright dùng sự kiện touch qua Chromium CDP: vuốt dọc/ngang với khóa trục, quán tính, không đổi ô chọn khi cuộn; chạm chọn, giữ kéo chọn vùng và chạm hai lần rồi nhập giá trị. Có kiểm tra công thức mới xuất kèm cached value; các bài UI gốc PDF/Sheets/Slides tiếp tục đạt.
+
+Bộ `integration_test/original_ui_test.dart` đạt 13 ca trên Samsung SM-A075F/Android 16/ARM64: XLSX/PPTX/XLS/PPT/CSV, 3 PDF, 4 DOCX và một DOC binary. Các ca Office kiểm tra mở/sửa, nội dung undo/redo, bản phục hồi, lưu cùng ID/URI và mở lại. XLS/PPT dùng LibreOfficeKit thật để tạo binary fixture và chuyển đổi hai chiều; đối chiếu OLE magic và giá trị/chữ sau khi chuyển lại OOXML. PPT sau LibreOffice có chữ trong shape, test đọc/sửa cả shape có text. CSV có tiếng Việt, dấu chấm phẩy, sửa ô và SUM; Lưu giữ dữ liệu CSV và mở lại được. Các ca này mô phỏng provider đọc/ghi nguồn để cô lập tài liệu kiểm thử; chưa bổ sung instrumentation picker/grant thật riêng cho XLS/PPT/CSV.
+
+Codec CSV còn được kiểm tra UTF-8 BOM, UTF-16 LE/BE, quoting/xuống dòng, mã số 0 đầu, formula-like literal, cache công thức rỗng/mất và từ chối xuất nhiều sheet. Test repository kiểm tra ID/định dạng nguồn, rollback khi lưu lỗi và tên file ngắn hợp lệ. Manifest runtime 501 tài nguyên khớp SHA-256. Không đánh dấu hoàn tất nghiệm thu cảm ứng/bàn phím bằng tay hoặc đối chiếu Microsoft Office; xem [giới hạn và cách dùng](legacy-office-formats.md).
+
+### Sửa tọa độ chọn ô/vùng trên Android WebView
+
+23/10/2026: tái hiện trên Samsung SM-A075F, DPR 1,875. Điểm chạm B2 có client (148,27; 203,20), offset canvas gốc khoảng (148,27; 50,67), nhưng PointerEvent mouse được tạo lại cho offset khoảng (79,08; -44,16). Desktop Chromium ở bài test cũ không tái hiện lỗi scale này. `sheets-touch.ts` nay đặt offsetX/Y từ client trừ cạnh canvas trước khi chuyển sự kiện cho Univer.
+
+6 bài Playwright production đạt; bài mới mô phỏng offset sai của Android WebView và kiểm tra chọn ô, kéo vùng, sửa bằng chạm hai lần. APK thường đã được cài đè và kiểm tra qua Android input thật (tap, motionevent DOWN/giữ/MOVE/UP, swipe), đọc lại state qua CDP: B2 được chọn, vùng B2:C3 được chọn; cuộn dọc tới hàng bắt đầu 12 và ngang tới cột bắt đầu 2 vẫn giữ vùng B2:C3. Sau cùng trả viewport về đầu bảng, để vùng chọn hiện trên màn hình. Không nhập/sửa giá trị trong file dùng để kiểm tra trên điện thoại.
+
+### Gọn các nút lưu trùng trên mobile
+
+23/10/2026: ẩn nhóm Quick Access và AutoSave ở ribbon mobile, dùng Lưu trên AppBar Flutter, Lưu thành bản mới trong menu ba chấm và Undo/Redo ở hàng dưới. Bridge `saveAs` chạy handler Save As gốc của Docs/Sheets/Slides, giữ việc chốt nội dung đang nhập và chọn đích native. Không đổi cơ chế tạo bản tạm khôi phục.
+
+51 test Flutter, 8 web/engine, 7 Playwright production và analyze đạt. Các bài trình duyệt kiểm tra nút Quick Access/AutoSave không còn hiển thị, Save As gửi `mode=copy` cho cả DOCX/XLSX/PPTX; sửa, lưu và cảm ứng Excel vẫn đạt. Bộ Android 13 ca đạt trên Samsung SM-A075F/Android 16, gồm ca mở menu Flutter → Lưu thành bản mới → Lưu tiếp, đối chiếu số tài liệu và bản nguồn trước đó.
+
+Lưu ý quy trình kiểm thử: đã phát hiện `flutter test` ở Flutter SDK hiện tại mặc định gỡ app khi kết thúc (`uninstall=true`), khiến danh sách gần đây trong dữ liệu riêng bị reset ở lần này. File nguồn trong Downloads vẫn còn. Đã mở lại `GenOffice_Sheets_20261022_144503.xlsx` qua SAF để tạo lại liên kết đọc/ghi và mục gần đây. AGENTS.md và README nay bắt buộc `--no-uninstall` cho integration test trên thiết bị; không dùng việc gỡ app/clear data để kiểm thử. Sau cài APK thường, đã kiểm tra trực tiếp menu ba chấm và các tab không còn Quick Access trên Samsung.

@@ -3268,6 +3268,9 @@ export function App() {
           if (!(await save()))
               throw Error('Không lưu được PPTX.');
           return;
+      case 'saveAs':
+          await saveAs();
+          return;
       case 'status': return { dirty: dirty || !!editing || !!editingCell || await window.slidesApi.isDirty() };
       case 'snapshot':
           await fileActions.flushActiveEdit(ctxRef.current);

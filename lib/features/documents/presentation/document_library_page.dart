@@ -1,6 +1,8 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import '../../../app/dependencies.dart';
+import '../../../app/branding.dart';
+import '../../../app/about_page.dart';
 import '../../editor/presentation/document_editor_page.dart';
 import '../../editor/presentation/mobile_docx_editor_page.dart';
 import '../domain/office_document.dart';
@@ -119,12 +121,20 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('GenOffice Mobile'),
+      title: const Text(AppBranding.name),
       actions: [
         IconButton(
           onPressed: _reload,
           tooltip: 'Tải lại',
           icon: const Icon(Icons.refresh),
+        ),
+        IconButton(
+          key: const Key('about-app'),
+          tooltip: 'Giới thiệu',
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const AboutPage())),
+          icon: const Icon(Icons.info_outline),
         ),
       ],
     ),
@@ -202,9 +212,7 @@ class _DocumentLibraryPageState extends State<DocumentLibraryPage> {
                     title: Text(document.name),
                     subtitle: Text(
                       [
-                        document.legacyDoc
-                            ? 'DOC'
-                            : document.format.name.toUpperCase(),
+                        document.sourceExtension.toUpperCase(),
                         document.sourceUri != null
                             ? 'File gốc'
                             : 'Bản trong app',

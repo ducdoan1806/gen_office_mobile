@@ -5054,6 +5054,12 @@ export function App({
               throw Error(r.error || 'Không lưu được XLSX.');
           return;
       }
+      case 'saveAs': {
+          if (!(await commitActiveEditor())) throw Error('Chưa hoàn tất nhập ô.');
+          const r = await handleSave('save-as');
+          if (!r.ok) throw Error(r.error || 'Chưa lưu bản mới.');
+          return;
+      }
       case 'status': return { dirty: !!lazyWorkbookRef.current && (journalSize(lazyWorkbookRef.current.editJournal) > 0 || !!lazyWorkbookRef.current.file.restoredFromRecovery) || !!editingCellRef.current };
       case 'snapshot': return (await (window as any).genOfficeSheetsRecovery(command.args.documentId, () => handleSave('recovery'))).ok === true;
       case 'undo':

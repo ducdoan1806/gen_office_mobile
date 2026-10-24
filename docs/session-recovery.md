@@ -30,7 +30,7 @@ Giới hạn mỗi snapshot 32 MB. Snapshot là bản gần nhất đã ghi hoà
 Dùng emulator phát triển, không gỡ app hoặc dùng `connectedDebugAndroidTest`. Thay `<run-id>` bằng ID mới mỗi lần để tách fixture:
 
 ```powershell
-flutter test integration_test/recovery_process_test.dart -d emulator-5554 --dart-define=RECOVERY_PHASE=prepare --dart-define=RECOVERY_TEST_RUN=<run-id>
+flutter test integration_test/recovery_process_test.dart --no-uninstall -d emulator-5554 --dart-define=RECOVERY_PHASE=prepare --dart-define=RECOVERY_TEST_RUN=<run-id>
 ```
 
 Khi log hiện `GENOFFICE_RECOVERY_PREPARED`, ở terminal khác chạy:
@@ -42,7 +42,7 @@ adb shell am force-stop com.example.gen_office_mobile
 Lệnh prepare báo lost connection/did not complete là chủ ý vì tiến trình bị dừng. Sau đó chạy:
 
 ```powershell
-flutter test integration_test/recovery_process_test.dart -d emulator-5554 --dart-define=RECOVERY_PHASE=restore --dart-define=RECOVERY_TEST_RUN=<run-id>
+flutter test integration_test/recovery_process_test.dart --no-uninstall -d emulator-5554 --dart-define=RECOVERY_PHASE=restore --dart-define=RECOVERY_TEST_RUN=<run-id>
 ```
 
 Restore phải đạt và tự dọn thư mục fixture riêng. Bài này được bỏ qua khi không truyền phase để không làm hỏng lượt chạy integration thông thường. Sau khi kiểm thử, chạy `flutter run -d emulator-5554` để mở lại app bình thường.

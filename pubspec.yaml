@@ -1,5 +1,5 @@
 name: gen_office_mobile
-description: "Mobile Office client with factory-hosted AI integration."
+description: "Ứng dụng làm việc với tài liệu nội bộ VPIC1."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -38,9 +38,10 @@ dependencies:
   file_selector: ^1.1.0
   path_provider: ^2.1.5
   crypto: ^3.0.7
+  archive: ^3.6.1
+  xml: 6.6.1
 
 dev_dependencies:
-  archive: ^3.6.1
   integration_test:
     sdk: flutter
   flutter_test:
@@ -64,6 +65,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/branding/app_icon_1024.png
     - assets/editor/
     - assets/editor/assets/
     - assets/editor/pdf/

@@ -25,16 +25,22 @@ class OfficeDocument {
   final int? sizeBytes;
   final bool legacyDoc;
   final String? sourceHash;
-  String get editorName =>
-      legacyDoc ? '${name.substring(0, name.length - 4)}.docx' : name;
+  String get sourceExtension =>
+      legacyDoc ? 'doc' : name.toLowerCase().split('.').last;
+  bool get needsConversion =>
+      sourceExtension != format.name &&
+      const ['doc', 'xls', 'ppt', 'csv'].contains(sourceExtension);
+  String get editorName => needsConversion
+      ? '${name.substring(0, name.lastIndexOf('.'))}.${format.name}'
+      : name;
 }
 
 DocumentFormat? editableFormat(String name) {
   final extension = name.toLowerCase().split('.').last;
   return switch (extension) {
     'doc' || 'docx' => DocumentFormat.docx,
-    'xlsx' => DocumentFormat.xlsx,
-    'pptx' => DocumentFormat.pptx,
+    'xls' || 'csv' || 'xlsx' => DocumentFormat.xlsx,
+    'ppt' || 'pptx' => DocumentFormat.pptx,
     _ => null,
   };
 }
