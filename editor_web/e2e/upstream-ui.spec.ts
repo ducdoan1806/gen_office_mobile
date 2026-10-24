@@ -46,7 +46,12 @@ test('original Slides App: canvas text editor, add slide, history and save',asyn
  await mobileScreenshot(page,'slides-mobile.png');expect(errors).toEqual([]);
 });
 test('original PDF App: thumbnails, search, page navigation and mobile ribbon',async({page})=>{
- const {errors,writes}=await setup(page,'pdf');await expect(page.locator('.pdf-page').first()).toBeVisible();await page.getByRole('button',{name:'Tìm kiếm',exact:true}).first().click();const input=page.locator('.pdf-search-input');await expect(input).toBeVisible();await input.fill('Factory');await page.waitForTimeout(800);await expect(page.locator('.pdf-search-input')).toHaveValue('Factory');await expect(page.locator('.tb-readonly')).toContainText('Chế độ xem PDF');
+ const {errors,writes}=await setup(page,'pdf');await expect(page.locator('.pdf-page').first()).toBeVisible();
+ await page.evaluate(()=>(window as any).genOfficePdfAiContext('qa-pdf-context'));
+ const context = await page.evaluate(()=>(window as any).qaMessages.find((m:any)=>m.type==='aiContext'&&m.id==='qa-pdf-context'));
+ expect(context.error).toBeUndefined();expect(context.value.editable).toBe(false);
+ expect(context.value.entries).toHaveLength(3);expect(context.value.entries.map((e:any)=>e.text).join(' ')).toContain('Factory');
+await page.getByRole('button',{name:'Tìm kiếm',exact:true}).first().click();const input=page.locator('.pdf-search-input');await expect(input).toBeVisible();await input.fill('Factory');await page.waitForTimeout(800);await expect(page.locator('.pdf-search-input')).toHaveValue('Factory');await expect(page.locator('.tb-readonly')).toContainText('Chế độ xem PDF');
  await mobileScreenshot(page,'pdf-mobile.png');await page.locator('.pdf-thumb[data-idx="2"]').click();await expect(page.locator('.pdf-thumb-active')).toHaveAttribute('data-idx','2');expect(writes).toEqual([]);expect(errors).toEqual([]);
 });
 

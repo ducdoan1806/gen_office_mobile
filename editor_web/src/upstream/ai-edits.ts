@@ -4,8 +4,11 @@ export type AiChange = { id: string; before: string; after: string };
 export class AiEditGuard {
   private captured?: { revision: string; fingerprint: string; entries: AiEntry[] };
   capture(fingerprint: string, entries: AiEntry[], scope: string) {
-    if (!entries.length) throw Error('Không có nội dung có thể sửa trong vùng này.');
     if (entries.length > 500 || JSON.stringify(entries).length > 60000) throw Error('Vùng quá lớn. Hãy chọn vùng nhỏ hơn (tối đa 500 đoạn/ô, 60.000 ký tự).');
+    // Follow-up questions about an unchanged scope must not expire its preview.
+    if (this.captured?.fingerprint === fingerprint && JSON.stringify(this.captured.entries) === JSON.stringify(entries)) {
+      return {revision:this.captured.revision,scope,entries};
+    }
     this.captured = { revision: crypto.randomUUID(), fingerprint, entries: structuredClone(entries) };
     return { revision: this.captured.revision, scope, entries };
   }

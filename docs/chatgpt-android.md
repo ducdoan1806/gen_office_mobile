@@ -8,7 +8,7 @@ Bổ sung 24/10/2026. Chỉ tích hợp ChatGPT trong đợt này; AI nội bộ
 - Bảng modal gần toàn màn hình, đóng bằng kéo xuống/nút Thu gọn/Back; editor không được tải lại. Phiên chat và bản nháp giữ trong bộ nhớ của editor, tiếp tục nhận phản hồi khi thu bảng. Đóng editor/kết thúc process chưa lưu lịch sử chat vào đĩa.
 - Continue with ChatGPT mở trình duyệt hệ thống. Đăng nhập/cấp quyền trên tên miền OpenAI rồi quay về VPIC1 Office. Không lấy phiên đăng nhập từ app ChatGPT hoặc WebView; không thu mật khẩu hay yêu cầu API key.
 - Tải model theo quyền tài khoản. Lựa chọn model lưu làm mặc định, các cuộc trò chuyện đã mở giữ model riêng; không đổi theo mạng.
-- Chế độ chat gửi câu hỏi/nội dung Đính kèm. Bật Sửa tài liệu để gửi nội dung vùng làm việc từ editor và nhận đề xuất Trước/Sau; chỉ bấm Áp dụng mới thay nội dung và dùng Lưu để ghi file gốc. Phạm vi hỗ trợ ở [AI chỉnh sửa tài liệu](ai-document-editing.md). PDF vẫn chỉ đọc.
+- Chế độ chat gửi câu hỏi/nội dung Đính kèm. Mặc định gửi ngữ cảnh file đang mở mỗi lượt hỏi, không cần bật chế độ; hỏi thì trả lời, yêu cầu sửa mới có đề xuất Trước/Sau; chỉ bấm Áp dụng mới thay nội dung và dùng Lưu để ghi file gốc. Phạm vi hỗ trợ ở [AI chỉnh sửa tài liệu](ai-document-editing.md). PDF vẫn chỉ đọc.
 - Có Dừng, Cuộc trò chuyện mới, tải lại model, kết nối lại/ngắt kết nối. Hạn mức/quyền ứng dụng do tài khoản ChatGPT quyết định; không tự chuyển nhà cung cấp.
 
 ## Luồng chính thức và giới hạn nghiệm thu
@@ -70,3 +70,10 @@ Tham chiếu:
 - APK debug ARM64 cài đè; giữ nguyên tài liệu, bản khôi phục chưa lưu và tài khoản/model cá nhân. Đã sửa hiện tượng mất focus khi bố cục thay đổi theo bàn phím bằng key ổn định cho composer.
 - Trên Samsung SM-A075F/Android 16, GPT-6.1-Sol thật: gửi yêu cầu sửa DOCX mẫu riêng `VPIC1-AI-QA.docx` trong Downloads, xem Trước/Sau, Áp dụng, Hoàn tác/Làm lại và Lưu vào chính nguồn SAF. Trước Lưu, SHA-256 file vẫn giống ban đầu. Sau Lưu, XML có câu mới và các phần ZIP khác nguyên byte. Không gửi tài liệu công ty.
 - 63 test Flutter (12 ca ChatGPT), 10 Vitest và 16 Playwright production đạt; analyze sạch. Callback mobile/CSP/countdown được kiểm thử trình duyệt; chưa nghiệm thu lại đăng nhập thật với trang mới trên Samsung. Sửa Excel/PPTX và định dạng cũ chưa gọi AI thật trên máy trong lượt này.
+
+### Điều chỉnh mặc định ngữ cảnh tài liệu — 24/10/2026
+
+Mở AI từ file được hiểu là đang hỏi về file đó. Đã bỏ công tắc Sửa tài liệu, lấy snapshot mới mỗi lượt hỏi, phân biệt trả lời và đề xuất thay đổi bằng hợp đồng summary/changes. Đính kèm là phần bổ sung; nếu không đọc được file thì báo lỗi, không âm thầm hỏi AI thiếu ngữ cảnh. PDF trích chữ các trang và giữ chỉ đọc; Excel mặc định dữ liệu sheet hiện tại, vùng nhiều ô được chọn sẽ ưu tiên phạm vi đó; PowerPoint trích văn bản bài trình chiếu. Giới hạn chi tiết ở ai-document-editing.md.
+
+- Kiểm chứng đợt ngữ cảnh mặc định: 66 Flutter (15 ca ChatGPT), 10 Vitest, 16 Playwright production; ca hỏi tiếp giữ revision chạy lại trên 3 editor đạt; analyze sạch. PDF fixture trích chữ đủ 3 trang, Excel mặc định có nhiều ô ngữ cảnh.
+- APK debug ARM64 cài đè Samsung. ChatGPT thật trả đúng câu trong DOCX mẫu khi hỏi nội dung mà không bật công tắc/đính kèm, không tạo changes. Yêu cầu đổi chữ tiếp theo tự tạo đề xuất Trước/Sau. Không áp dụng hay lưu đề xuất thử này; chưa thử gọi AI thật với PDF/Excel/PowerPoint trong đợt điều chỉnh.

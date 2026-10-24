@@ -24,7 +24,8 @@ class DocumentChat extends ChangeNotifier {
   final input = TextEditingController();
   final messages = <ChatMessage>[];
   String attachment = '';
-  bool editMode = false, applying = false;
+  String? documentName;
+  bool applying = false;
   Future<Map<String, dynamic>> Function()? readDocument;
   Future<void> Function(Map<String, Object?>)? applyDocument;
   Future<void> applyEdit(AiDocumentEdit edit) async {
@@ -94,7 +95,7 @@ class DocumentChat extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final editing = editMode && readDocument != null;
+    final hasDocument = readDocument != null;
     busy = true;
     error = null;
     final generation = ++_generation;
@@ -103,16 +104,29 @@ class DocumentChat extends ChangeNotifier {
     ChatMessage? answer, user;
     notifyListeners();
     try {
-      final context = editing ? await readDocument!() : null;
+      final snapshot = hasDocument ? await readDocument!() : null;
+      final context = snapshot == null
+          ? null
+          : <String, dynamic>{
+              ...snapshot,
+              'editable':
+                  applyDocument != null && snapshot['editable'] != false,
+              'name': documentName,
+            };
       if (disposed || generation != _generation) return;
       final content = context != null
-          ? AiDocumentEdit.prompt(question, context)
+          ? AiDocumentEdit.prompt(question, context, attachment: attachment)
           : attachment.isEmpty
           ? question
           : '$question\n\nNội dung tham khảo do người dùng đính kèm:\n$attachment';
       final history = messages
           .where((m) => m.complete)
-          .map((m) => {'role': m.role, 'content': m.wireText ?? m.text})
+          .map(
+            (m) => {
+              'role': m.role,
+              'content': context == null ? (m.wireText ?? m.text) : m.text,
+            },
+          )
           .toList();
       history.add({'role': 'user', 'content': content});
       if (history.fold<int>(0, (n, m) => n + m['content']!.length) > 120000) {
@@ -142,13 +156,20 @@ class DocumentChat extends ChangeNotifier {
             'Kết quả quá lớn. Hãy chia nhỏ yêu cầu.',
           );
         }
-        answer.text = editing ? 'Đang soạn đề xuất chỉnh sửa…' : response;
+        answer.text = hasDocument
+            ? 'Đang đọc tài liệu và xử lý yêu cầu…'
+            : response;
         notifyListeners();
       }
       if (generation == _generation) {
         if (context != null) {
           final edit = AiDocumentEdit.parse(response, context);
-          answer.edit = edit;
+          if (context['editable'] != true && edit.changes.isNotEmpty) {
+            throw const FormatException(
+              'Tài liệu chỉ đọc; không thể áp dụng thay đổi.',
+            );
+          }
+          if (edit.changes.isNotEmpty) answer.edit = edit;
           answer.wireText = response;
           answer.text = edit.summary;
         }
@@ -156,13 +177,13 @@ class DocumentChat extends ChangeNotifier {
       }
     } catch (e) {
       if (!disposed && generation == _generation) {
-        if (editing && answer != null) {
-          answer.text = 'Chưa tạo được đề xuất chỉnh sửa.';
+        if (hasDocument && answer != null) {
+          answer.text = 'Chưa xử lý xong yêu cầu với tài liệu.';
         }
         error = e is ChatGptException
             ? e.message
-            : editing
-            ? 'Không tạo được đề xuất: $e'
+            : hasDocument
+            ? 'Không xử lý được tài liệu: $e'
             : 'Kết nối ChatGPT bị gián đoạn. Kiểm tra mạng và thử lại.';
       }
     } finally {
@@ -213,6 +234,7 @@ Future<void> showDocumentAi(
   DocumentChat session,
   String name,
 ) async {
+  session.documentName = name;
   unawaited(session.initialize());
   await showModalBottomSheet<void>(
     context: context,
@@ -469,8 +491,8 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                     ),
                     subtitle: Text(
                       s.attachment.isEmpty
-                          ? (s.editMode
-                                ? 'Sẽ gửi vùng tài liệu đang mở khi bấm Gửi'
+                          ? (s.readDocument != null
+                                ? 'AI đang làm việc với tài liệu này'
                                 : 'Chưa đính kèm nội dung tài liệu')
                           : 'Đã đính kèm ${s.attachment.length} ký tự',
                     ),
@@ -478,25 +500,6 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                       tooltip: 'Đính kèm nội dung',
                       onPressed: s.busy ? null : _attachment,
                       icon: const Icon(Icons.attach_file),
-                    ),
-                  ),
-                if (!compact && client.connected && s.readDocument != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit_note, size: 20),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text('Sửa tài liệu · xem trước khi áp dụng'),
-                        ),
-                        Switch(
-                          value: s.editMode,
-                          onChanged: s.busy || s.applying
-                              ? null
-                              : (value) => setState(() => s.editMode = value),
-                        ),
-                      ],
                     ),
                   ),
                 if (s.loading) const LinearProgressIndicator(),
@@ -587,9 +590,9 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                                 const SizedBox(height: 8),
                                 Text(
                                   client.connected
-                                      ? (s.editMode
-                                            ? 'Gửi yêu cầu để sửa vùng đang chọn (Word: văn bản chọn hoặc toàn tài liệu; Excel: vùng ô; PowerPoint: slide hiện tại). Nội dung vùng này sẽ được gửi tới ChatGPT cá nhân.'
-                                            : 'Hỏi, dịch hoặc soạn lại nội dung. Chỉ nội dung bạn nhập và đính kèm được gửi đi.')
+                                      ? (s.readDocument != null
+                                            ? 'Bạn đang làm việc với tài liệu này. Hỏi, tóm tắt hoặc yêu cầu chỉnh sửa trực tiếp; nội dung tài liệu/vùng chọn được gửi tới ChatGPT cá nhân khi bấm Gửi. Thay đổi sẽ có bản xem trước để bạn duyệt.'
+                                            : 'Hỏi, dịch hoặc soạn lại nội dung. Nội dung bạn nhập và đính kèm được gửi đi.')
                                       : 'Kết nối tài khoản ChatGPT cá nhân bằng trình duyệt. Không cần nhập API key.',
                                   textAlign: TextAlign.center,
                                 ),

@@ -387,6 +387,31 @@ export default function App() {
 // GenOffice Mobile: report source viewer lifecycle to the Flutter reader shell.
  useEffect(()=>{if(status==='ready'&&doc)(window as any).GenOfficePdf?.postMessage(JSON.stringify({type:'rendered',value:{pages:doc.numPages}}));if(status==='error')(window as any).GenOfficePdf?.postMessage(JSON.stringify({type:'error',value:'Không mở được PDF. Kiểm tra file bị hỏng hoặc có mật khẩu.'}));},[status,doc]);
 
+  // Read text from the loaded PDF, including pages outside the viewport.
+  useEffect(() => {
+    const win = window as any;
+    const read = async (id: string) => {
+      try {
+        if (!doc || status !== 'ready') throw Error('Chờ PDF tải xong.');
+        if (doc.numPages > 500) throw Error('PDF quá lớn để gửi AI (tối đa 500 trang).');
+        const entries: any[] = []; let size=0, hasText=false;
+        for (let page=1;page<=doc.numPages;page++) {
+          const content = await (await doc.getPage(page)).getTextContent();
+          const text = content.items.map((item:any)=>typeof item.str==='string' ? item.str+(item.hasEOL?'\n':' ') : '').join('').trim();
+          if (text) hasText=true;
+          const entry={id:String(page),label:`Trang ${page}`,text:text || '[Trang không trích được chữ; chưa có OCR]'};
+          size += JSON.stringify(entry).length;
+          if (size>60000) throw Error('Nội dung PDF vượt 60.000 ký tự; chưa thể gửi toàn bộ cho AI.');
+          entries.push(entry);
+        }
+        if (!hasText) throw Error('PDF không có chữ có thể trích xuất; chưa hỗ trợ OCR cho bản scan.');
+        win.GenOfficePdf?.postMessage(JSON.stringify({type:'aiContext',id,value:{revision:crypto.randomUUID(),scope:`PDF chỉ đọc · ${doc.numPages} trang`,entries,editable:false}}));
+      } catch(e) {win.GenOfficePdf?.postMessage(JSON.stringify({type:'aiContext',id,error:String(e)}));}
+    };
+    win.genOfficePdfAiContext = read;
+    return () => {if(win.genOfficePdfAiContext===read) delete win.genOfficePdfAiContext;};
+  },[doc,status]);
+
   const [sizes, setSizes] = useState<PageSize[]>([])
   // Blank pages added this session live past the document's pages as virtual original
   // indices (see BlankPageInput); allSizes is the page table every index lookup uses

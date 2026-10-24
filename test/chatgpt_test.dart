@@ -37,6 +37,19 @@ class FakeChatGpt extends ChatGptClient {
   void changed() => notifyListeners();
 }
 
+class ScriptedChatGpt extends FakeChatGpt {
+  final responses = <String>[];
+  @override
+  Stream<String> reply(
+    List<Map<String, String>> history, {
+    required HttpClient transport,
+    String? modelId,
+  }) {
+    sent.add(history);
+    return Stream.value(responses.removeAt(0));
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
@@ -153,7 +166,7 @@ void main() {
     },
   );
   test(
-    'edit mode waits for complete proposal and applies only on explicit action',
+    'current document is automatic and edits apply only on explicit action',
     () async {
       final client = FakeChatGpt()
         ..model = 'test'
@@ -161,7 +174,6 @@ void main() {
       final chat = DocumentChat(client: client);
       await chat.initialize();
       var applied = 0;
-      chat.editMode = true;
       chat.readDocument = () async => {
         'revision': 'r1',
         'scope': 'Word',
@@ -192,6 +204,101 @@ void main() {
       expect(edit.applied, true);
       await chat.applyEdit(edit);
       expect(applied, 1);
+      chat.dispose();
+      client.dispose();
+    },
+  );
+  test(
+    'questions use fresh open-file content automatically, without proposing edits',
+    () async {
+      final client = ScriptedChatGpt()
+        ..model = 'test'
+        ..models = [const ChatGptModel('test', 'Test')];
+      client.responses.addAll([
+        '{"summary":"Summary of Old","changes":[]}',
+        '{"summary":"Summary of Unsaved","changes":[]}',
+      ]);
+      final chat = DocumentChat(client: client);
+      await chat.initialize();
+      var text = 'Old';
+      var calls = 0;
+      chat.documentName = 'Report.docx';
+      chat.readDocument = () async {
+        calls++;
+        return {
+          'revision': 'r$calls',
+          'scope': 'Word',
+          'entries': [
+            {'id': '1', 'label': 'Đoạn 1', 'text': text},
+          ],
+        };
+      };
+      chat.applyDocument = (_) async =>
+          fail('A question must never apply edits');
+      chat.attachment = 'Extra note';
+      chat.input.text = 'Summarize this file';
+      await chat.send();
+      expect(client.sent.single.last['content'], contains('Old'));
+      expect(client.sent.single.last['content'], contains('Report.docx'));
+      expect(client.sent.single.last['content'], contains('Extra note'));
+      expect(chat.messages.last.text, 'Summary of Old');
+      expect(chat.messages.last.edit, isNull);
+      text = 'Unsaved';
+      chat.input.text = 'What changed?';
+      await chat.send();
+      expect(calls, 2);
+      expect(client.sent.last.last['content'], contains('Unsaved'));
+      expect(chat.messages.last.text, 'Summary of Unsaved');
+      expect(chat.messages.last.edit, isNull);
+      chat.dispose();
+      client.dispose();
+    },
+  );
+  test(
+    'context failure does not silently send a question without the file',
+    () async {
+      final client = ScriptedChatGpt()
+        ..model = 'test'
+        ..models = [const ChatGptModel('test', 'Test')];
+      final chat = DocumentChat(client: client);
+      await chat.initialize();
+      chat.readDocument = () async => throw StateError('File not ready');
+      chat.input.text = 'Summarize';
+      await chat.send();
+      expect(client.sent, isEmpty);
+      expect(chat.input.text, 'Summarize');
+      expect(chat.error, contains('File not ready'));
+      chat.dispose();
+      client.dispose();
+    },
+  );
+  test(
+    'PDF context is automatically included and cannot propose editable changes',
+    () async {
+      final client = ScriptedChatGpt()
+        ..model = 'test'
+        ..models = [const ChatGptModel('test', 'Test')];
+      client.responses.addAll([
+        '{"summary":"Page summary","changes":[]}',
+        '{"summary":"Edit","changes":[{"id":"1","before":"PDF text","after":"Changed"}]}',
+      ]);
+      final chat = DocumentChat(client: client);
+      await chat.initialize();
+      chat.readDocument = () async => {
+        'revision': 'pdf',
+        'scope': 'PDF',
+        'entries': [
+          {'id': '1', 'label': 'Page 1', 'text': 'PDF text'},
+        ],
+      };
+      chat.input.text = 'Summarize';
+      await chat.send();
+      expect(client.sent.single.last['content'], contains('"editable":false'));
+      expect(chat.messages.last.text, 'Page summary');
+      chat.input.text = 'Change';
+      await chat.send();
+      expect(chat.messages.last.edit, isNull);
+      expect(chat.error, contains('chỉ đọc'));
       chat.dispose();
       client.dispose();
     },

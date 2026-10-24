@@ -5067,10 +5067,16 @@ export function App({
       case 'aiContext': {
           if (!(await commitActiveEditor())) throw Error('Hoàn tất nhập ô trước.');
           const book = univerRef.current?.univerAPI.getActiveWorkbook();
-          const sheet = book?.getActiveSheet(), range = book?.getActiveRange();
-          if (!sheet || !range) throw Error('Chọn vùng ô cần sửa.');
+          const sheet = book?.getActiveSheet(), selected = book?.getActiveRange();
+          if (!sheet || !selected) throw Error('Chờ bảng tính mở xong.');
+          const explicitRange = selected.getHeight()*selected.getWidth()>1;
+          const meta = lazyWorkbookRef.current?.file.sheets.find(s=>s.id===sheet.getSheetId());
+          const rows = Math.max(sheet.getLastRow()+1,meta?.valueRowCount ?? 1), cols = Math.max(sheet.getLastColumn()+1,meta?.valueColumnCount ?? 1);
+          if (!explicitRange && rows*cols>500) throw Error('Sheet quá lớn để gửi toàn bộ. Hãy chọn vùng ô cần hỏi (tối đa 500 ô).');
+          const range = explicitRange ? selected : sheet.getRange(0,0,Math.max(1,rows),Math.max(1,cols));
           const bounds = range.getRange();
-          if (range.getHeight() * range.getWidth() > 500) throw Error('Chọn tối đa 500 ô.');
+          if (range.getHeight()*range.getWidth()>500) throw Error('Chọn tối đa 500 ô.');
+          if (!(await sheetsSkillDeps().ensureRangeLoaded(bounds,sheet.getSheetId()))) throw Error('Không tải đủ vùng ô để gửi AI.');
           const data = range.getCellDatas();
           const entries: any[] = [];
           data.forEach((row, r) => row.forEach((cell, c) => {
@@ -5079,7 +5085,7 @@ export function App({
                 text: String(cell?.f ?? cell?.v ?? '')});
           }));
           mobileAiScope.current = {book, sheet, bounds, data: structuredClone(data)};
-          return mobileAiGuard.current.capture(JSON.stringify(book.save()), entries, `Vùng ô đang chọn · ${sheet.getSheetName()}`);
+          return mobileAiGuard.current.capture(JSON.stringify(book.save()), entries, `${explicitRange ? "Vùng ô đang chọn" : "Dữ liệu sheet hiện tại"} · ${sheet.getSheetName()}`);
       }
       case 'aiApply': {
           if (!(await commitActiveEditor())) throw Error('Hoàn tất nhập ô trước.');

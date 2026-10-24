@@ -55,13 +55,13 @@ async function save(copy = false, recoveryId?: string) { if (!hasDocument)
 (window as any).slidesApi = desktopApi({
     mobileAiContext: async (index: number) => {
         const entries: any[] = [];
-        opened.deck.slides[index]?.elements.forEach((el: any) => {
+        opened.deck.slides.forEach((slide,index) => slide.elements.forEach((el: any) => {
             if (el.type !== 'text' && el.type !== 'shape') return;
             el.text?.paragraphs.forEach((p: any, pi: number) => p.runs.forEach((r: any, ri: number) => {
                 if (typeof r.text === 'string') entries.push({id: `${index}|${el.id}|${pi}|${ri}`, label: `Slide ${index+1} · ${el.id}`, text: r.text});
             }));
-        });
-        return aiGuard.capture(fingerprint(), entries, `Văn bản slide ${index+1}`);
+        }));
+        return aiGuard.capture(fingerprint(), entries, `Văn bản bài trình chiếu · ${opened.deck.slides.length} slide (đang xem slide ${index+1})`);
     },
     mobileAiApply: async (args: any) => {
         const changes = aiGuard.validate(args, fingerprint());

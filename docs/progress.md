@@ -4,6 +4,16 @@ Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
+## Điều chỉnh ngữ cảnh AI mặc định — 24/10/2026
+
+- [x] Bỏ công tắc Sửa tài liệu. Mở AI từ file thì mặc định mọi câu hỏi tham chiếu file đang mở; tên/phạm vi hiện rõ và không yêu cầu dán lại nội dung có sẵn.
+- [x] Mỗi lần Gửi lấy snapshot mới, gồm phần chưa lưu. Hỏi/tóm tắt trả lời bình thường; chỉ yêu cầu sửa mới tạo đề xuất Trước/Sau → Áp dụng. Lưu vẫn ghi nguồn qua luồng cũ.
+- [x] Word: thân tài liệu/vùng chọn; Excel: dữ liệu sheet hiện tại khi chỉ đặt con trỏ một ô, hoặc vùng nhiều ô được chọn, tải đủ dữ liệu lazy; PowerPoint: văn bản bài trình chiếu. PDF: chữ các trang, chỉ đọc, chưa OCR.
+- [x] Không gửi lặp snapshot cũ trong lịch sử; dùng snapshot hiện tại. Đính kèm được gửi bổ sung. Lỗi/giới hạn ngữ cảnh giữ câu hỏi và báo rõ, không gửi thiếu file.
+- [x] Kiểm thử: 66 Flutter (15 ca ChatGPT), 10 Vitest và 16 Playwright production đạt; riêng 3 luồng sửa chạy lại với ca hỏi tiếp giữ revision đạt. PDF trích đủ chữ 3 trang; Excel mặc định có ngữ cảnh nhiều ô. Analyze sạch.
+- [x] Build APK debug ARM64/cài đè Samsung SM-A075F/Android 16. ChatGPT GPT-6.1-Sol thật: mở DOCX mẫu, không bật công tắc/không đính kèm, hỏi nội dung nhận đúng `VPIC1 AI sample updated.` và không có đề xuất sửa; yêu cầu đổi updated → confirmed tự tạo bản Trước/Sau. Không áp dụng/lưu đề xuất thử này, không gửi tài liệu công ty. Các file gần đây vẫn có sau cập nhật.
+- Các kết quả ở mục ba yêu cầu AI bên dưới là lịch sử nghiệm thu bản có công tắc; cơ chế ngữ cảnh mới thay thế công tắc đó.
+
 ## Ba yêu cầu AI — triển khai ngày 24/10/2026
 
 - [x] **Trang callback 127.0.0.1:** giao diện VPIC1 Office phù hợp điện thoại; chỉ báo thành công sau trao đổi token, kiểm tra danh tính/quyền và lưu kết nối. Tự thử mở `vpic1office://chatgpt-return`; nút thủ công ẩn trong 5 giây đầu, sau đó mới hiện nếu trang còn mở. Trang lỗi/hủy có nút quay về ngay, không báo thành công. Giữ PKCE/state/nonce, Custom Tabs/KeepAlive; CSP dùng nonce riêng, no-store/no-referrer; không chèn code/token vào HTML hoặc URI quay về.

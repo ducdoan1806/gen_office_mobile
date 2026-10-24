@@ -24,12 +24,17 @@ for(const kind of ['docx','xlsx','pptx'] as const) {
   await open();
   if(kind==='xlsx') {
    await page.waitForFunction(()=>(window as any).genOfficeSheets?.getActiveWorkbook());
+   const automatic = await command(page,'aiContext');
+   expect(automatic.scope).toContain('Dữ liệu sheet hiện tại');
+   expect(automatic.entries.length).toBeGreaterThan(1);
    await page.evaluate(()=>{const book=(window as any).genOfficeSheets.getActiveWorkbook();book.getSheets()[0].getRange('B2:C2').activate();});
   }
   const context=await command(page,'aiContext');
   expect(context.entries.length).toBeGreaterThan(0);
   const entry=context.entries.find((e:any)=>e.text.length>0)!;
   const changes=[{id:entry.id,before:entry.text,after:kind==='xlsx'?'42':entry.text+' AI changed'}];
+  const followup = await command(page,'aiContext');
+  expect(followup.revision).toBe(context.revision);
   await command(page,'aiApply',{revision:context.revision,changes});
   const modified=await command(page,'aiContext');
   expect(modified.entries.some((e:any)=>e.text===changes[0].after)).toBe(true);

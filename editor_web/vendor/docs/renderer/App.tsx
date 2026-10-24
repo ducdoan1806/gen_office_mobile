@@ -2327,6 +2327,7 @@ export function App() {
               });
               value = mobileAiGuard.current.capture(JSON.stringify(editor.state.doc.toJSON()), entries,
                 empty ? 'Văn bản tài liệu (giữ định dạng từng đoạn chữ)' : 'Vùng văn bản được chọn');
+              value = {...(value as any), editable:editor.isEditable};
               break;
             }
             case 'aiApply': {
