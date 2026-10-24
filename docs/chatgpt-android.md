@@ -33,3 +33,10 @@ Nguồn chính thức:
 - 58 test Flutter (gồm 7 ca ChatGPT) đạt; analyze không có vấn đề.
 - APK debug x86_64 build/cài đè đạt; bảng AI hiển thị đúng trong editor và nút đăng nhập mở trình duyệt đến auth.openai.com/log-in.
 - Chrome emulator ANR trong bước đăng nhập; WebView tài liệu chưa khởi động xong trên cùng emulator. Chưa có kiểm chứng tài khoản thật, model/stream thật, refresh/revoke thực tế hay Android ARM64 trong đợt này.
+
+### Kiểm tra ChatGPT trên Samsung — 24/10/2026 (đang nghiệm thu)
+
+- APK debug ARM64 build thành công và cài đè bằng adb install -r trên Samsung SM-A075F/Android 16 sau khi máy cập nhật. Hai mục tài liệu gần đây được giữ nguyên.
+- Đã mở/thu gọn/mở lại bảng AI trong DOCX; nút Continue with ChatGPT mở Chrome và tải trang đăng nhập auth.openai.com bình thường.
+- Đang chờ chủ tài khoản tự đăng nhập/cấp quyền. Chưa xác nhận trao đổi token, danh sách model, phản hồi thật hoặc khôi phục phiên sau khi khởi động lại.
+- Chưa gửi nội dung tài liệu công ty hoặc bấm lưu/sửa file trong lượt kiểm tra này.
