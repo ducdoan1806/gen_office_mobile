@@ -117,6 +117,12 @@ class WebViewDocumentEditorBridge implements DocumentEditorBridge {
     });
   }
 
+  Future<Map<String, dynamic>> aiContext() async =>
+      Map<String, dynamic>.from((await _command('aiContext')) as Map);
+  Future<void> aiApply(Map<String, Object?> proposal) async {
+    await _command('aiApply', proposal);
+  }
+
   Future<bool> checkpoint(String documentId) async =>
       await _command('snapshot', {'documentId': documentId}) == true;
 

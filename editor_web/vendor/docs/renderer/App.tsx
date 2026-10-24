@@ -1,3 +1,5 @@
+import { closeHistory } from '@tiptap/pm/history'
+import { AiEditGuard } from '../../../src/upstream/ai-edits'
 import { scriptFontHtml } from './editor/script-fonts'
 import { carryDocSeen } from './ai/tools'
 import { DOC_CSS_COMMITTED_EVENT } from './editor/cjk-punct-shrink'
@@ -2297,6 +2299,8 @@ export function App() {
     [],
   )
 
+  const mobileAiGuard = useRef(new AiEditGuard())
+
   // Browser/mobile host boundary: reuse the real lifecycle and command pipeline.
   useEffect(() => {
     if (!editor || !doc || docLoading) return
@@ -2307,9 +2311,38 @@ export function App() {
           let value: unknown = null
           switch (command.method) {
             case 'open': {
+              mobileAiGuard.current.invalidate();
               const outcome = await loadFile(command.args.file)
               if (outcome !== 'ok') throw new Error(`DOCX open failed: ${outcome}`)
               break
+            }
+            case 'aiContext': {
+              const entries: any[] = [];
+              const {from, to, empty} = editor.state.selection;
+              editor.state.doc.descendants((node, pos) => {
+                if (node.isText && (empty || (pos < to && pos + node.nodeSize > from))) {
+                  const start = empty ? pos : Math.max(from,pos), end = empty ? pos+node.nodeSize : Math.min(to,pos+node.nodeSize);
+                  entries.push({id: String(start), label: `Văn bản @${start}`, text: (node.text ?? '').slice(start-pos,end-pos)});
+                }
+              });
+              value = mobileAiGuard.current.capture(JSON.stringify(editor.state.doc.toJSON()), entries,
+                empty ? 'Văn bản tài liệu (giữ định dạng từng đoạn chữ)' : 'Vùng văn bản được chọn');
+              break;
+            }
+            case 'aiApply': {
+              if (!editor.isEditable) throw Error('Tài liệu chỉ đọc.');
+              const changes = mobileAiGuard.current.validate(command.args, JSON.stringify(editor.state.doc.toJSON()));
+              let tr = editor.state.tr;
+              for (const op of [...changes].sort((a,b) => Number(b.id)-Number(a.id))) {
+                const pos = Number(op.id), node = editor.state.doc.nodeAt(pos);
+                if (!node?.isText || editor.state.doc.textBetween(pos,pos+op.before.length) !== op.before) throw Error('Nội dung không còn khớp.');
+                tr = op.after ? tr.replaceWith(pos, pos + op.before.length, editor.schema.text(op.after, node.marks)) : tr.delete(pos, pos + op.before.length);
+              }
+              editor.view.dispatch(closeHistory(tr.setMeta('addToHistory', true)));
+              editor.view.dispatch(closeHistory(editor.state.tr));
+              mobileAiGuard.current.invalidate();
+              value = true;
+              break;
             }
             case 'snapshot': value = await captureMobileRecovery(fileCtxRef.current); break
             case 'save':
@@ -2320,7 +2353,7 @@ export function App() {
               break
             case 'undo': editor.chain().focus().undo().run(); break
             case 'redo': editor.chain().focus().redo().run(); break
-            case 'new': await resetFile(); break
+            case 'new': mobileAiGuard.current.invalidate(); await resetFile(); break
             case 'status': value = { dirty: isDocDirty(fileCtxRef.current), name: fileCtxRef.current.doc?.fileName }; break
             default: throw new Error('Unsupported renderer command')
           }

@@ -1,3 +1,4 @@
+import { AiEditGuard } from '../../../../src/upstream/ai-edits'
 import { focusWorksheet } from './sheet-focus'
 import {
   activateFormulaClosure,
@@ -5036,9 +5037,12 @@ export function App({
   // GenOffice Mobile exposes the same Univer facade used by source commands.
  ;(window as any).genOfficeSheets=univerRef.current?.univerAPI;
   // GenOffice Mobile: stable command boundary; all actions run the original App handlers.
+  const mobileAiGuard = useRef(new AiEditGuard());
+  const mobileAiScope = useRef<any>(null);
   const mobileRef = useRef<any>(null);
   mobileRef.current = async (command: any) => { switch (command.method) {
       case 'open':
+          mobileAiGuard.current.invalidate(); mobileAiScope.current = null;
           if (!(await openLazyWorkbook(command.args.file)))
               throw Error('Không mở được XLSX.');
           return;
@@ -5059,6 +5063,44 @@ export function App({
           const r = await handleSave('save-as');
           if (!r.ok) throw Error(r.error || 'Chưa lưu bản mới.');
           return;
+      }
+      case 'aiContext': {
+          if (!(await commitActiveEditor())) throw Error('Hoàn tất nhập ô trước.');
+          const book = univerRef.current?.univerAPI.getActiveWorkbook();
+          const sheet = book?.getActiveSheet(), range = book?.getActiveRange();
+          if (!sheet || !range) throw Error('Chọn vùng ô cần sửa.');
+          const bounds = range.getRange();
+          if (range.getHeight() * range.getWidth() > 500) throw Error('Chọn tối đa 500 ô.');
+          const data = range.getCellDatas();
+          const entries: any[] = [];
+          data.forEach((row, r) => row.forEach((cell, c) => {
+              if (cell?.p) return;
+              entries.push({id: `${r}:${c}`, label: `Hàng ${bounds.startRow+r+1}, cột ${bounds.startColumn+c+1}`,
+                text: String(cell?.f ?? cell?.v ?? '')});
+          }));
+          mobileAiScope.current = {book, sheet, bounds, data: structuredClone(data)};
+          return mobileAiGuard.current.capture(JSON.stringify(book.save()), entries, `Vùng ô đang chọn · ${sheet.getSheetName()}`);
+      }
+      case 'aiApply': {
+          if (!(await commitActiveEditor())) throw Error('Hoàn tất nhập ô trước.');
+          const scope = mobileAiScope.current;
+          const book = univerRef.current?.univerAPI.getActiveWorkbook();
+          const changes = mobileAiGuard.current.validate(command.args, JSON.stringify(book?.save()));
+          if (!scope || book?.getId() !== scope.book.getId()) throw Error('Bảng tính đã đóng.');
+          const matrix: any = {};
+          for (const op of changes) {
+              const [r,c] = op.id.split(':').map(Number);
+              const old = scope.data[r][c];
+              const text = op.after;
+              const value = text === '' ? null : /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(text) ? Number(text) : text;
+              (matrix[scope.bounds.startRow+r] ??= {})[scope.bounds.startColumn+c] = {...old, p: null, si: null, t: typeof value === 'number' ? 2 : 1,
+                v: text.startsWith('=') ? null : value, f: text.startsWith('=') ? text : null};
+          }
+          const b = scope.bounds;
+          const applied = await univerRef.current!.univerAPI.executeCommand('sheet.command.set-range-values', {unitId:book!.getId(),subUnitId:scope.sheet.getSheetId(),range:b,value:matrix});
+          if (!applied) throw Error('Không áp dụng được thay đổi vào vùng ô (có thể bị bảo vệ).');
+          mobileAiGuard.current.invalidate();
+          return true;
       }
       case 'status': return { dirty: !!lazyWorkbookRef.current && (journalSize(lazyWorkbookRef.current.editJournal) > 0 || !!lazyWorkbookRef.current.file.restoredFromRecovery) || !!editingCellRef.current };
       case 'snapshot': return (await (window as any).genOfficeSheetsRecovery(command.args.documentId, () => handleSave('recovery'))).ok === true;

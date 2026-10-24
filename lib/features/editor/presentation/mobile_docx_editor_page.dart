@@ -80,6 +80,22 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _chat.readDocument = () async {
+      if (_working || _bridge == null) {
+        throw StateError('Chờ tài liệu mở xong.');
+      }
+      return _bridge!.aiContext();
+    };
+    _chat.applyDocument = (proposal) async {
+      if (_working || _bridge == null) throw StateError('Tài liệu đang bận.');
+      await _bridge!.aiApply(proposal);
+      if (mounted) {
+        setState(
+          () =>
+              _status = 'Đã áp dụng thay đổi AI. Bấm Lưu để cập nhật file gốc.',
+        );
+      }
+    };
     if (_supported) {
       unawaited(_initialize());
     } else {

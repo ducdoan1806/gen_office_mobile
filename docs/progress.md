@@ -1,32 +1,27 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất; AI công ty vẫn tạm hoãn; ChatGPT cá nhân đã triển khai, AI sửa file được yêu cầu tiếp tục trong ghi chú bàn giao. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất; AI công ty vẫn tạm hoãn; ChatGPT cá nhân đã triển khai, AI sửa nội dung tài liệu đã triển khai với xem trước/Áp dụng. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
-## Bàn giao phiên tiếp theo — ưu tiên theo yêu cầu ngày 24/10/2026
+## Ba yêu cầu AI — triển khai ngày 24/10/2026
 
-Phiên này chỉ ghi chú; ba mục dưới chưa được sửa hoặc triển khai. Khi tiếp tục, ưu tiên lần lượt:
+- [x] **Trang callback 127.0.0.1:** giao diện VPIC1 Office phù hợp điện thoại; chỉ báo thành công sau trao đổi token, kiểm tra danh tính/quyền và lưu kết nối. Tự thử mở `vpic1office://chatgpt-return`; nút thủ công ẩn trong 5 giây đầu, sau đó mới hiện nếu trang còn mở. Trang lỗi/hủy có nút quay về ngay, không báo thành công. Giữ PKCE/state/nonce, Custom Tabs/KeepAlive; CSP dùng nonce riêng, no-store/no-referrer; không chèn code/token vào HTML hoặc URI quay về.
+  - [x] Kiểm thử HTML thật trên Chrome 360×640 với CSP: nút ẩn trước 5 giây, hiện sau 5 giây; trang lỗi và bố cục không tràn ngang đạt.
+  - [ ] Nghiệm thu lại một lượt đăng nhập thật trên Samsung với tự quay về và fallback mới; không coi kiểm thử trình duyệt là đã đạt luồng đăng nhập mới trên điện thoại.
+- [x] **Bàn phím chat AI:** chiều cao bảng trừ viewInsets và phần đầu modal; lời chào cuộn được. Khi thiếu chiều cao, thu gọn thông tin phụ và ô nhập để giữ nút gửi/dừng. Giới hạn vùng hiển thị thông báo lỗi.
+  - [x] Widget test mở bàn phím 300 px, nhập nhiều dòng, đổi màn hình 360×640 → 360×480 không còn RenderFlex overflow; giữ các bài thu gọn/hội thoại cũ.
+  - [x] Samsung SM-A075F/Android 16: bàn phím mở ổn định, gõ yêu cầu thật, nút Gửi dùng được và không thấy overflow. Sửa thêm mất focus do thay đổi các widget khi bàn phím mở bằng key ổn định cho composer; widget test giữ focus qua viewInsets/kích thước đạt.
+- [x] **AI sửa tài liệu:** thêm công tắc Sửa tài liệu trong chat, trích nội dung trực tiếp từ editor, nhận JSON đề xuất; xem trước Trước/Sau rồi mới Áp dụng. Kiểm tra id/nội dung gốc/token phiên và fingerprint tài liệu; chặn đề xuất cũ, id lạ, bản trả lời dở hoặc không hợp lệ. Áp dụng qua transaction/editor, dùng Hoàn tác và Lưu hiện có để cập nhật file nguồn; không tự lưu ngay khi AI trả lời.
+  - Word: văn bản vùng chọn hoặc thân tài liệu nếu không chọn; giữ marks của từng đoạn chữ. Excel: vùng ô đang chọn, sửa giá trị/công thức bằng lệnh Univer có journal/undo. PowerPoint: văn bản các shape cấp trên trong slide hiện tại, giữ các đoạn/run khác. PDF tiếp tục chỉ đọc.
+  - Giới hạn 500 mục/60.000 ký tự ngữ cảnh; không âm thầm cắt bớt. Chưa sửa cấu trúc/bố cục, ảnh, bảng/group PowerPoint hoặc rich text trong ô Excel. Định dạng DOC/XLS/PPT/CSV tiếp tục dùng pipeline chuyển đổi/lưu đã có; chưa nghiệm thu riêng AI với toàn bộ định dạng cũ.
+  - [x] Kiểm thử production browser DOCX/XLSX/PPTX: sửa → undo → redo → chặn xung đột → lưu → mở lại; đối chiếu các phần ZIP không chỉnh sửa. Word/Excel/PowerPoint đều đạt.
+  - [x] Kiểm thử Flutter với API giả: chỉ tạo đề xuất sau khi trả lời hoàn tất; không áp dụng trước thao tác người dùng; chặn áp dụng lặp; phản hồi sai id/nội dung bị từ chối.
+  - [x] Samsung + GPT-6.1-Sol thật: DOCX mẫu riêng trong Downloads được trích 1 mục, nhận đề xuất hợp lệ, xem Trước/Sau, Áp dụng, Hoàn tác/Làm lại, Lưu. Đọc lại nguồn qua ADB xác nhận câu mới, các phần ZIP khác nguyên byte; trước khi bấm Lưu, SHA-256 nguồn vẫn giống bản đầu. Không gửi tài liệu công ty; giữ nguyên các tài liệu và bản khôi phục sẵn có.
 
-1. [ ] **Làm đẹp trang callback 127.0.0.1 và tự quay về app.**
-   - Thêm CSS phù hợp nhận diện VPIC1 Office, bố cục đẹp trên điện thoại, trạng thái đăng nhập rõ ràng.
-   - Sau khi xử lý kết quả đăng nhập thành công, thử tự điều hướng về app. Hiển thị trạng thái đang chuyển hướng/chờ 5 giây; nếu sau 5 giây chưa quay về thì mới hiện nút quay lại thủ công.
-   - Giữ xác thực PKCE/state/nonce, Custom Tabs/KeepAlive và đường quay về không mang code/token; không đưa trạng thái thành công trước khi xác thực hoàn tất.
-   - Kiểm tra trên Samsung thật: tự quay về, fallback sau 5 giây, trường hợp người dùng hủy hoặc đăng nhập lỗi.
+Kiểm chứng: 63 test Flutter (12 ca ChatGPT), 10 test Vitest và 16 Playwright production đạt; analyze không có vấn đề; APK debug ARM64 build/cài đè thành công. Trang callback mới chưa nghiệm thu lại với đăng nhập thật trên Samsung; sửa Excel/PPTX mới được kiểm thử trình duyệt, chưa dùng tài khoản thật trên máy cho hai định dạng này.
 
-2. [ ] **Sửa lỗi “Bottom overflowed by 36 pixels” khi mở bàn phím chat AI.**
-   - Đây là lỗi chủ dự án vừa ghi nhận; chưa tái hiện/định vị trong phiên ghi chú này.
-   - Kiểm tra chiều cao bảng AI, SafeArea và viewInsets khi bàn phím mở; ô nhập/nút Gửi luôn sử dụng được, nội dung chat cuộn được, không tràn.
-   - Nghiệm thu bàn phím mở/đóng, nhập nhiều dòng và màn hình nhỏ trên điện thoại thật; giữ editor/hội thoại khi thu gọn.
-
-3. [ ] **Cho AI sửa file theo yêu cầu.**
-   - Đây là yêu cầu tiếp tục mới của chủ dự án cho phần AI thao tác tài liệu; không còn coi toàn bộ mục này là tạm hoãn. Chưa có mã áp dụng sửa file.
-   - Bổ sung lấy đúng ngữ cảnh tài liệu/vùng chọn và chuyển yêu cầu thành thao tác chỉnh sửa có cấu trúc; thống nhất phạm vi định dạng khi triển khai, vì PDF hiện vẫn chỉ đọc.
-   - Có kiểm tra thao tác và revision để tránh sửa nhầm khi tài liệu đã thay đổi; xem trước thay đổi/Áp dụng và Hoàn tác.
-   - Dùng pipeline Lưu hiện có để cập nhật file nguồn người dùng đã mở; kiểm tra sửa → lưu → mở lại trên file mẫu, giữ các phần không chỉnh sửa.
-   - AI công ty, nhà cung cấp khác, iOS và các hạng mục hoãn còn lại không tự mở lại theo ghi chú này.
-
-Trạng thái nền để tiếp tục: ChatGPT đăng nhập/chat thật đã đạt trên Samsung Android 16; 59 test Flutter và analyze đạt ở lần kiểm chứng trước. Danh sách chi tiết ở mục ChatGPT bên dưới. Ghi chú này không xác nhận ba mục trên đã hoàn tất.
+AI công ty, nhà cung cấp khác và iOS vẫn tạm hoãn. Chi tiết: [AI chỉnh sửa tài liệu](ai-document-editing.md).
 
 ## Phạm vi phát triển hiện tại
 
@@ -37,7 +32,7 @@ Trạng thái nền để tiếp tục: ChatGPT đăng nhập/chat thật đã �
 - **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
 - **Điện thoại Android thật:** chủ dự án đã mở lại kiểm thử ngày 22/10/2026. Đã kiểm thử tự động trên Samsung SM-A075F/Android 16/ARM64; nghiệm thu bàn phím/cảm ứng và đối chiếu Microsoft Word vẫn chưa hoàn thành. Xem [kết quả máy thật](android-device-qa.md).
 - **iOS:** tạm hoãn toàn bộ công việc còn lại ở bước 9 và việc kiểm thử lại các tính năng mới trên iOS. Các dấu hoàn thành cũ được giữ như lịch sử kết quả đã làm.
-- **AI:** AI công ty tiếp tục tạm hoãn; AI sửa file được yêu cầu tiếp tục ngày 24/10/2026, chưa triển khai, xem ghi chú bàn giao. ChatGPT cá nhân đã có đăng nhập, chat và kiểm thử thật trên Samsung ngày 24/10/2026; các giới hạn và phần chưa nghiệm thu được ghi đầy đủ ở mục ChatGPT cuối tài liệu.
+- **AI:** AI công ty tiếp tục tạm hoãn; AI sửa nội dung tài liệu đã triển khai ngày 24/10/2026, xem mục ba yêu cầu AI ở đầu tài liệu. ChatGPT cá nhân đã có đăng nhập, chat và kiểm thử thật trên Samsung ngày 24/10/2026; các giới hạn và phần chưa nghiệm thu được ghi đầy đủ ở mục ChatGPT cuối tài liệu.
 
 ## Lộ trình đã thống nhất
 
@@ -237,8 +232,8 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 - [ ] Timeout đăng nhập đủ 15 phút; lỗi mạng giữa đăng nhập/trao đổi token/tải model/streaming; tài khoản hết hạn mức hoặc không đủ quyền trên dịch vụ thật.
 - [ ] Hủy/Dừng trên kết nối thật, kiểm tra dọn tài nguyên và các trường hợp hệ thống đóng app/trình duyệt khác.
 - [ ] Đăng nhập/đổi giữa nhiều tài khoản hoặc workspace thuận tiện hơn; hiện đổi tài khoản bằng ngắt kết nối rồi kết nối lại.
-- [ ] Tự trích nội dung/vùng chọn chính xác từ DOCX, Sheets, Slides và PDF; dữ liệu bảng và định dạng có cấu trúc.
-- [ ] AI đề xuất diff, áp dụng sửa vào file, kiểm tra revision xung đột và hoàn tác; hiện chỉ đọc/sao chép phản hồi.
+- [x] Trích văn bản Word/vùng chọn, vùng ô Excel và văn bản slide hiện tại để đề xuất chỉnh sửa; phạm vi/giới hạn ở mục đầu. PDF và ngữ cảnh cấu trúc nâng cao chưa tích hợp.
+- [x] AI đề xuất Trước/Sau, Áp dụng qua editor có kiểm tra xung đột và dùng undo/Lưu hiện có; kiểm thử production browser đạt cho DOCX/XLSX/PPTX. Nghiệm thu máy thật ghi riêng ở mục đầu.
 - [ ] Lưu/khôi phục lịch sử chat và bản nháp sau khi đóng editor hoặc khởi động lại app.
 - [ ] Nghiệm thu AI đầy đủ trên XLSX/PPTX/PDF và các thiết bị/trình duyệt mục tiêu; test máy thật đợt này tập trung DOCX + chat.
 - [ ] Kết nối máy chủ AI công ty; tích hợp Claude/Gemini/Copilot hoặc nhà cung cấp khác. Chỉ tiếp tục theo phạm vi được chủ dự án yêu cầu.

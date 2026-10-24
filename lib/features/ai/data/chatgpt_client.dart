@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'oauth_return_page.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -86,6 +87,8 @@ class ChatGptClient extends ChangeNotifier {
     connecting = true;
     interruptedAuth = false;
     notifyListeners();
+    final outcome = Completer<bool>();
+    Future<void>? callbackResponse;
     try {
       final host = _record['host_id'] as String? ?? _newHostId();
       _record['host_id'] = host;
@@ -117,16 +120,24 @@ class ChatGptClient extends ChangeNotifier {
             'Invalid or expired sign-in. Return to VPIC1 Office.',
           );
         } else {
-          request.response.headers.contentType = ContentType.html;
-          request.response.headers.set('Cache-Control', 'no-store');
-          request.response.headers.set(
-            'Content-Security-Policy',
-            "default-src 'none'",
-          );
-          request.response.write(
-            '<meta charset="utf-8"><title>VPIC1 Office</title><h2>VPIC1 Office</h2><p>Đã nhận kết quả đăng nhập.</p><p><a href="vpic1office://chatgpt-return">Quay lại VPIC1 Office</a></p>',
-          );
           completer.complete(values);
+          callbackResponse = () async {
+            final success = await outcome.future;
+            final pageNonce = randomToken();
+            request.response.headers.contentType = ContentType.html;
+            request.response.headers.set('Cache-Control', 'no-store');
+            request.response.headers.set('Referrer-Policy', 'no-referrer');
+            request.response.headers.set(
+              'Content-Security-Policy',
+              "default-src 'none'; style-src 'nonce-$pageNonce'; script-src 'nonce-$pageNonce'; base-uri 'none'; frame-ancestors 'none'",
+            );
+            request.response.write(
+              oauthReturnPage(success: success, nonce: pageNonce),
+            );
+            await request.response.close();
+          }();
+          await callbackResponse;
+          return;
         }
         await request.response.close();
       });
@@ -208,8 +219,14 @@ class ChatGptClient extends ChangeNotifier {
         rethrow;
       }
       models = [];
+      outcome.complete(true);
+      await callbackResponse;
       await loadModels();
     } finally {
+      if (!outcome.isCompleted) outcome.complete(false);
+      try {
+        await callbackResponse;
+      } catch (_) {}
       await _callback?.close(force: true);
       _callback = null;
       _authorization = null;

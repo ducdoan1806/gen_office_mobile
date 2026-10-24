@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gen_office_mobile/features/ai/data/ai_document_edit.dart';
+import 'package:gen_office_mobile/features/ai/data/oauth_return_page.dart';
 import 'package:gen_office_mobile/features/ai/data/chatgpt_client.dart';
 import 'package:gen_office_mobile/features/ai/presentation/document_ai_sheet.dart';
 
@@ -37,6 +39,163 @@ class FakeChatGpt extends ChatGptClient {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'edit proposal rejects invented targets, stale text and duplicate changes',
+    () {
+      final context = <String, dynamic>{
+        'revision': 'r1',
+        'entries': [
+          {'id': 'p1', 'label': 'P1', 'text': 'Original'},
+        ],
+      };
+      String proposal(List<Map<String, String>> changes) =>
+          jsonEncode({'summary': 'Sửa', 'changes': changes});
+      final edit = AiDocumentEdit.parse(
+        proposal([
+          {'id': 'p1', 'before': 'Original', 'after': 'Changed'},
+        ]),
+        context,
+      );
+      expect(edit.payload['revision'], 'r1');
+      expect(edit.changes.single['after'], 'Changed');
+      for (final changes in [
+        [
+          {'id': 'unknown', 'before': 'Original', 'after': 'Changed'},
+        ],
+        [
+          {'id': 'p1', 'before': 'Wrong', 'after': 'Changed'},
+        ],
+        [
+          {'id': 'p1', 'before': 'Original', 'after': 'A'},
+          {'id': 'p1', 'before': 'Original', 'after': 'B'},
+        ],
+      ]) {
+        expect(
+          () => AiDocumentEdit.parse(proposal(changes), context),
+          throwsFormatException,
+        );
+      }
+      expect(
+        () => AiDocumentEdit.parse('not json', context),
+        throwsFormatException,
+      );
+    },
+  );
+  test('callback auto returns and exposes fallback only after countdown', () {
+    final success = oauthReturnPage(success: true, nonce: 'test-nonce');
+    expect(success, contains('nonce="test-nonce"'));
+    expect(success, contains('let left=5'));
+    expect(
+      success,
+      contains('window.location.href="vpic1office://chatgpt-return"'),
+    );
+    expect(success, contains('chatgpt-return" hidden'));
+    final denied = oauthReturnPage(success: false, nonce: 'test-nonce');
+    expect(denied, isNot(contains('<script')));
+    expect(denied, isNot(contains('Đã kết nối ChatGPT')));
+  });
+  testWidgets(
+    'AI sheet fits small screen and multiline keyboard without overflow',
+    (tester) async {
+      final client = FakeChatGpt()
+        ..model = 'test'
+        ..models = [const ChatGptModel('test', 'Test')];
+      final chat = DocumentChat(client: client);
+      chat.readDocument = () async => {};
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showDocumentAi(context, chat, 'Test.docx'),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(TextField).first);
+      await tester.pumpAndSettle();
+      expect(tester.testTextInput.isVisible, true);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).first)
+            .focusNode
+            .hasFocus,
+        true,
+      );
+      chat.input.text = 'Line1\nLine2\nLine3\nLine4';
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('send-ai')), findsOneWidget);
+      tester.view.physicalSize = const Size(360, 480);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<EditableText>(find.byType(EditableText).first)
+            .focusNode
+            .hasFocus,
+        true,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      chat.dispose();
+      client.dispose();
+    },
+  );
+  test(
+    'edit mode waits for complete proposal and applies only on explicit action',
+    () async {
+      final client = FakeChatGpt()
+        ..model = 'test'
+        ..models = [const ChatGptModel('test', 'Test')];
+      final chat = DocumentChat(client: client);
+      await chat.initialize();
+      var applied = 0;
+      chat.editMode = true;
+      chat.readDocument = () async => {
+        'revision': 'r1',
+        'scope': 'Word',
+        'entries': [
+          {'id': '1', 'label': 'Đoạn 1', 'text': 'Old'},
+        ],
+      };
+      chat.applyDocument = (payload) async {
+        expect(payload['revision'], 'r1');
+        applied++;
+      };
+      chat.input.text = 'Rewrite';
+      final pending = chat.send();
+      await Future<void>.delayed(Duration.zero);
+      client.stream.add(
+        '{"summary":"Updated", "changes":[{"id":"1","before":"Old","after":"New"}]}',
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(applied, 0);
+      expect(chat.messages.last.complete, false);
+      await client.stream.close();
+      await pending;
+      final edit = chat.messages.last.edit!;
+      expect(edit.applied, false);
+      expect(applied, 0);
+      await chat.applyEdit(edit);
+      expect(applied, 1);
+      expect(edit.applied, true);
+      await chat.applyEdit(edit);
+      expect(applied, 1);
+      chat.dispose();
+      client.dispose();
+    },
+  );
   test(
     'restarting after process death detects interrupted login and preserves host identity',
     () async {
@@ -79,6 +238,7 @@ void main() {
     () async {
       const channel = MethodChannel('chatgpt-oauth-test');
       final writes = <String>[];
+      final callbackDone = Completer<void>();
       final http = HttpOverrides.runWithHttpOverrides(
         () => HttpClient(),
         LoopbackHttpOverrides(),
@@ -119,9 +279,22 @@ void main() {
                   },
                 ),
               );
-              final accepted = await denied.close();
-              expect(accepted.statusCode, 200);
-              await accepted.drain<void>();
+              unawaited(
+                denied
+                    .close()
+                    .then((accepted) async {
+                      expect(accepted.statusCode, 200);
+                      final html = await accepted
+                          .transform(utf8.decoder)
+                          .join();
+                      expect(html, contains('Chưa hoàn tất đăng nhập'));
+                      expect(html, isNot(contains('Đã kết nối ChatGPT')));
+                      callbackDone.complete();
+                    })
+                    .catchError((Object e, StackTrace st) {
+                      callbackDone.completeError(e, st);
+                    }),
+              );
               return null;
             }
             throw StateError('Unexpected platform method');
@@ -129,6 +302,7 @@ void main() {
       final client = ChatGptClient(platform: channel);
       try {
         await expectLater(client.connect(), throwsA(isA<ChatGptException>()));
+        await callbackDone.future;
         expect(client.connected, false);
         expect(client.connecting, false);
         expect(writes.every((s) => !s.contains('access_token')), true);
