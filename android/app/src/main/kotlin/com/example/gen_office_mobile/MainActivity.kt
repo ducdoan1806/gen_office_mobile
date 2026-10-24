@@ -34,6 +34,24 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        val chatGpt = ChatGptPlatform(applicationContext)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vpic1/chatgpt")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "openBrowser") {
+                    try { chatGpt.openBrowser(requireNotNull(call.argument<String>("url"))); result.success(null) }
+                    catch (_: Exception) { result.error("browser", "Không mở được trình duyệt để đăng nhập ChatGPT.", null) }
+                } else if (call.method in listOf("read", "write", "verifyIdToken")) {
+                    background(result, "Không xác thực hoặc lưu được kết nối ChatGPT. Vui lòng thử lại.") {
+                        when (call.method) {
+                            "read" -> chatGpt.read()
+                            "write" -> { chatGpt.write(requireNotNull(call.argument<String>("value"))); null }
+                            else -> chatGpt.verify(requireNotNull(call.argument<String>("token")),
+                                requireNotNull(call.argument<String>("clientId")),
+                                requireNotNull(call.argument<String>("nonce")))
+                        }
+                    }
+                } else result.notImplemented()
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "genoffice/app_info")
             .setMethodCallHandler { call, result ->
                 if (call.method != "getAppInfo") result.notImplemented()

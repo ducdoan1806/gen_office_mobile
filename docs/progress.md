@@ -13,7 +13,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 - **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
 - **Điện thoại Android thật:** chủ dự án đã mở lại kiểm thử ngày 22/10/2026. Đã kiểm thử tự động trên Samsung SM-A075F/Android 16/ARM64; nghiệm thu bàn phím/cảm ứng và đối chiếu Microsoft Word vẫn chưa hoàn thành. Xem [kết quả máy thật](android-device-qa.md).
 - **iOS:** tạm hoãn toàn bộ công việc còn lại ở bước 9 và việc kiểm thử lại các tính năng mới trên iOS. Các dấu hoàn thành cũ được giữ như lịch sử kết quả đã làm.
-- **AI:** tiếp tục tạm hoãn như đã thống nhất.
+- **AI:** AI công ty và AI tự sửa tài liệu tiếp tục tạm hoãn; ChatGPT cá nhân được bổ sung theo yêu cầu ngày 24/10/2026, xem phần cuối.
 
 ## Lộ trình đã thống nhất
 
@@ -83,9 +83,9 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 - [x] Mở → sửa → lưu → mở lại đạt trong integration test Android emulator và iOS Simulator.
 - [ ] Nghiệm thu cùng luồng trên điện thoại thật với file nhà máy và đối chiếu Microsoft Word.
 
-## AI — tạm hoãn theo yêu cầu
+## AI công ty — tiếp tục tạm hoãn
 
-Giữ interface/mock/API stub hiện có. Chưa nối API và chưa triển khai AI thao tác tài liệu. AI sẽ chạy trên máy chủ nội bộ nhà máy, mobile gọi API; không chạy model trên điện thoại. Chỉ tiếp tục khi chủ dự án yêu cầu.
+Giữ interface/mock/API stub AI nhà máy hiện có; chưa nối máy chủ và chưa triển khai AI tự sửa tài liệu. ChatGPT cá nhân trên Android được bổ sung riêng theo yêu cầu ngày 24/10/2026; xem [ChatGPT Android](chatgpt-android.md). Không chạy model trên điện thoại.
 
 ## Công việc bổ sung đã làm
 
@@ -106,7 +106,7 @@ Chi tiết phần Sheets/Slides và giới hạn hiện tại: [Android Sheets/S
 
 Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã chuyển PDF/XLSX/PPTX sang App/ribbon gốc GenOffice như DOCX, giữ giới hạn PDF chỉ đọc. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn.
 
-Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
+Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI công ty/tự sửa tài liệu cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
 Đây là tổng hợp kết quả kiểm thử đã ghi nhận; phạm vi và ngày kiểm chứng được ghi trong tài liệu từng tính năng. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md), [PDF viewer](pdf-viewer.md) và [build iOS](ios-build.md).
 
@@ -147,3 +147,12 @@ Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công đi�
 
 - [x] Thu logo adaptive xuống 54dp trong layer 108dp, bo góc 25%, nằm trọn trong vòng an toàn 66dp; thêm nền sáng đồng bộ app để mask của launcher không cắt vào hình. Giữ tỉ lệ vuông và nguyên hình nguồn, không đổi splash/trang Giới thiệu.
 - [x] Build APK debug ARM64 đạt, cài bằng `adb install -r` và kiểm tra trực tiếp trong danh sách ứng dụng Samsung Android 16: logo đầy đủ, đúng tỉ lệ, không bị phóng/cắt như bản trước. Icon nguồn giữ nguyên SHA-256.
+
+### ChatGPT cá nhân trên Android — 24/10/2026
+
+- [x] Nút AI trong Word/Excel/PowerPoint và PDF; bảng modal gần toàn màn hình, thu gọn/Back không tải lại editor. Giữ bản nháp/chat/model trong phiên editor và tiếp tục nhận phản hồi khi thu bảng.
+- [x] Luồng SIWC chính thức qua trình duyệt hệ thống, không API key/cookie từ ứng dụng khác; PKCE/state/nonce, kiểm tra ID token bằng JWKS, token mã hóa Android Keystore và loại khỏi backup. Model lấy theo quyền tài khoản; giữ lựa chọn riêng cho cuộc trò chuyện.
+- [x] Chat streaming, đính kèm nội dung bằng thao tác dán, sao chép, dừng, chat mới, kết nối lại/ngắt kết nối. Chưa tự lấy vùng chọn canvas hay áp dụng sửa tài liệu.
+- [x] 58 test Flutter đạt, analyze sạch và APK debug x86_64 build thành công. Cài đè bằng install -r; trên emulator kiểm tra mở bảng AI, nút Continue with ChatGPT mở được trang auth.openai.com. Không chạy integration test có cleanup gỡ app.
+- [ ] Nghiệm thu đăng nhập/cấp quyền/tải model/nhận câu trả lời bằng tài khoản thật; Chrome trên emulator hiện ANR, WebView tài liệu cũng kẹt khởi động. Chưa xác nhận chức năng đăng nhập thật, refresh token và chat trên máy thật. Không đánh dấu hoàn tất AI hoặc phát hành production.
+- Chi tiết/phạm vi/quyền triển khai SIWC: [ChatGPT Android](chatgpt-android.md). AI công ty, các nhà cung cấp khác và AI tự sửa file vẫn chưa triển khai.

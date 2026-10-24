@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../ai/presentation/document_ai_sheet.dart';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
@@ -53,6 +54,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
     with WidgetsBindingObserver {
   WebViewDocumentEditorBridge? _bridge;
   StreamSubscription<EditorSaveResult>? _saved;
+  final _chat = DocumentChat();
   bool _viewCreated = false, _busy = true, _allowPop = false;
   bool _saving = false, _checkpointing = false;
   Timer? _checkpointTimer;
@@ -354,6 +356,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
       EditorDocument(id: document.id, name: document.editorName, bytes: bytes),
       recovered: pending != null,
     );
+    if (_currentDocument.id != document.id) _chat.clear();
     _currentDocument = document;
     _name = document.name;
     _baseHash = pending != null ? pending.baseHash : sourceHash;
@@ -582,6 +585,7 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
 
   @override
   void dispose() {
+    _chat.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _checkpointTimer?.cancel();
     unawaited(_saved?.cancel());
@@ -680,6 +684,12 @@ class _MobileDocxEditorPageState extends State<MobileDocxEditorPage>
                         ? null
                         : () => _perform(() => _bridge!.redo()),
                     icon: const Icon(Icons.redo),
+                  ),
+                  IconButton(
+                    key: const Key('open-ai'),
+                    tooltip: 'Trợ lý AI',
+                    onPressed: () => showDocumentAi(context, _chat, _name),
+                    icon: const Icon(Icons.auto_awesome_outlined),
                   ),
                   Expanded(
                     child: Padding(

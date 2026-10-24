@@ -4,7 +4,7 @@
 
 Ứng dụng Flutter chỉnh sửa DOCX, nhúng editor React/Tiptap của [GenOffice](https://github.com/genspark-ai/genoffice) bằng WebView. Editor, font và worker được đóng gói trong ứng dụng; không cần chạy web server bên ngoài.
 
-Android có một nút **Mở tài liệu** cho DOCX, DOC, PDF, XLS/XLSX, PPT/PPTX và CSV. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF dùng App/ribbon gốc GenOffice, chạy offline để xem, tìm chữ và điều hướng trang. Phần AI vẫn là mock/stub, chưa kết nối API nhà máy. XLSX và PPTX dùng nguyên App/ribbon từ source GenOffice như DOCX: lưới/thanh công thức/sheet tabs của Sheets, canvas/danh sách slide/ghi chú của Slides. Có lưu nguồn, undo/redo và bản phục hồi; các công cụ nâng cao desktop chưa được chuyển đầy đủ. Xem [Sheets/Slides Android](docs/sheets-slides-android.md). Ưu tiên Android; iOS hiện tạm hoãn.
+Android có một nút **Mở tài liệu** cho DOCX, DOC, PDF, XLS/XLSX, PPT/PPTX và CSV. DOCX sửa/lưu trực tiếp; DOC dùng LibreOfficeKit offline để chuyển DOC ↔ DOCX khi mở/lưu; PDF dùng App/ribbon gốc GenOffice, chạy offline để xem, tìm chữ và điều hướng trang. AI nhà máy vẫn là mock/stub. ChatGPT cá nhân trên Android đã có bảng chat và luồng SIWC chính thức, cần nghiệm thu tài khoản thật trước phân phối; xem [ChatGPT Android](docs/chatgpt-android.md). XLSX và PPTX dùng nguyên App/ribbon từ source GenOffice như DOCX: lưới/thanh công thức/sheet tabs của Sheets, canvas/danh sách slide/ghi chú của Slides. Có lưu nguồn, undo/redo và bản phục hồi; các công cụ nâng cao desktop chưa được chuyển đầy đủ. Xem [Sheets/Slides Android](docs/sheets-slides-android.md). Ưu tiên Android; iOS hiện tạm hoãn.
 
 ## 1. Chuẩn bị môi trường
 
@@ -235,7 +235,7 @@ Chi tiết: [bridge mobile](docs/mobile-webview.md), [tách editor khỏi Electr
 - DOCX đã có bản tạm và phục hồi sau mất tiến trình; chỉ bảo vệ đến checkpoint hoàn chỉnh gần nhất. File nguồn Android được lưu qua SAF; cache và bản tạm riêng có thể mất khi gỡ ứng dụng. Xem [khôi phục phiên](docs/session-recovery.md).
 - Ribbon gốc đã hỗ trợ cuộn ngang; vẫn cần tối ưu cảm ứng và kiểm tra trên nhiều điện thoại thật.
 - Các tích hợp Electron như Zotero, CLI/MCP, mã hóa file và xuất PDF native chưa được chuyển sang mobile.
-- AI chưa kết nối. App dùng loopback trên chính thiết bị để phục vụ editor; không cần API AI hoặc web server bên ngoài cho việc chỉnh sửa DOCX.
+- AI nhà máy chưa kết nối; ChatGPT cá nhân cần Internet và tài khoản được cấp quyền SIWC. App dùng loopback trên chính thiết bị để phục vụ editor; không cần API AI hoặc web server bên ngoài cho việc chỉnh sửa DOCX.
 
 ## Source control và license
 
