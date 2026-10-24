@@ -77,3 +77,9 @@ Mở AI từ file được hiểu là đang hỏi về file đó. Đã bỏ côn
 
 - Kiểm chứng đợt ngữ cảnh mặc định: 66 Flutter (15 ca ChatGPT), 10 Vitest, 16 Playwright production; ca hỏi tiếp giữ revision chạy lại trên 3 editor đạt; analyze sạch. PDF fixture trích chữ đủ 3 trang, Excel mặc định có nhiều ô ngữ cảnh.
 - APK debug ARM64 cài đè Samsung. ChatGPT thật trả đúng câu trong DOCX mẫu khi hỏi nội dung mà không bật công tắc/đính kèm, không tạo changes. Yêu cầu đổi chữ tiếp theo tự tạo đề xuất Trước/Sau. Không áp dụng hay lưu đề xuất thử này; chưa thử gọi AI thật với PDF/Excel/PowerPoint trong đợt điều chỉnh.
+
+### Dấu hiệu app đã nhận yêu cầu chat — 24/10/2026
+
+Tin nhắn và phản hồi chờ xuất hiện đồng bộ ngay khi Gửi, trước khi đợi đọc tài liệu. Các giai đoạn đọc ngữ cảnh/chờ ChatGPT/nhận phản hồi có nhãn và vòng quay; nút gửi có vòng quay quanh nút Dừng ở cả chế độ bàn phím. Hoàn tất/lỗi/hủy dọn trạng thái chờ; lỗi phục hồi câu hỏi nếu chưa có bản nháp mới. Nội dung đang nhận dở không được đưa vào lịch sử cho lượt sau. Bản xem trước sửa file và pipeline lưu giữ cơ chế duyệt hiện có.
+
+Kiểm chứng phản hồi chờ: 68 test Flutter (17 ca ChatGPT), analyze sạch. APK debug ARM64 cài đè Samsung, giữ dữ liệu. Với câu hỏi mẫu qua GPT-6.1-Sol thật, đã chụp và xem màn hình lúc chờ: câu hỏi xuất hiện, nhãn Đã nhận yêu cầu · Đang chờ ChatGPT cùng vòng quay và nút Dừng trong ô nhập, bàn phím mở. Sau hoàn tất nút Gửi trở lại và chỉ báo tắt. Không sửa/lưu nguồn, không gửi tài liệu công ty.

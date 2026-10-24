@@ -4,6 +4,15 @@ Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
 
+## Phản hồi khi gửi chat AI — 24/10/2026
+
+- [x] Bấm Gửi hiện ngay câu hỏi và thẻ phản hồi có vòng quay, trước khi đọc ngữ cảnh tài liệu; xóa ô nhập ngay để xác nhận thao tác được nhận. Hai lượt đang xử lý không gửi lặp.
+- [x] Hiện các giai đoạn: Đã nhận yêu cầu · Đang đọc tài liệu → Đã nhận yêu cầu · Đang chờ ChatGPT → AI đang trả lời. Vòng quay tại nút gửi/dừng vẫn nhìn thấy khi bàn phím mở hoặc người dùng cuộn chat.
+- [x] Hết yêu cầu/lỗi/hủy thì dừng chỉ báo; lỗi giữ câu hỏi để thử lại nếu chưa gõ bản nháp mới. Hủy trong lúc đọc file không gửi tiếp khi kết quả đọc cũ về muộn. Thu gọn/mở lại vẫn giữ yêu cầu đang chạy và cuộn đến hội thoại mới nhất.
+- [x] Widget test mô phỏng đọc file chậm, chờ API chưa có byte đầu, trả lời rồi hoàn tất; kiểm tra tin nhắn/chỉ báo ngay, bàn phím và dọn trạng thái. Unit test hủy đọc file và bỏ kết quả muộn.
+- [x] 68 test Flutter đạt, gồm 17 ca ChatGPT; chạy lại 17 ca sau kiểm tra dọn trạng thái lỗi đạt. Analyze sạch; APK debug ARM64 build/cài đè Samsung SM-A075F/Android 16 thành công.
+- [x] Máy thật + GPT-6.1-Sol: gửi câu hỏi mẫu 1–150 trong DOCX mẫu; chụp màn hình lúc chờ xác nhận câu hỏi, vòng quay và nhãn đã nhận/chờ ChatGPT, nút Dừng ở ô nhập khi bàn phím mở. Khi hoàn tất, chỉ báo chờ tắt và nút Gửi trở lại. Không sửa/lưu file nguồn hoặc gửi tài liệu công ty.
+
 ## Điều chỉnh ngữ cảnh AI mặc định — 24/10/2026
 
 - [x] Bỏ công tắc Sửa tài liệu. Mở AI từ file thì mặc định mọi câu hỏi tham chiếu file đang mở; tên/phạm vi hiện rõ và không yêu cầu dán lại nội dung có sẵn.

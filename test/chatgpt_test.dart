@@ -165,6 +165,103 @@ void main() {
       client.dispose();
     },
   );
+  testWidgets(
+    'sending immediately shows acknowledgement through slow context and first response',
+    (tester) async {
+      final api = FakeChatGpt()
+        ..model = 'first'
+        ..models = [const ChatGptModel('first', 'Test')];
+      final chat = DocumentChat(client: api);
+      await chat.initialize();
+      final context = Completer<Map<String, dynamic>>();
+      chat.readDocument = () => context.future;
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showDocumentAi(context, chat, 'Sample.docx'),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      chat.input.text = 'Summarize';
+      await tester.tap(find.byKey(const Key('send-ai')));
+      await tester.pump();
+      expect(chat.messages.first.text, 'Summarize');
+      expect(chat.input.text, isEmpty);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Summarize'), findsOneWidget);
+      expect(find.byKey(const Key('ai-waiting')), findsOneWidget);
+      expect(find.text('Đã nhận yêu cầu · Đang đọc tài liệu…'), findsOneWidget);
+      expect(api.sent, isEmpty);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('ai-waiting')), findsOneWidget);
+      context.complete({
+        'revision': 'r',
+        'scope': 'Word',
+        'entries': [
+          {'id': '1', 'label': 'P1', 'text': 'Sample'},
+        ],
+      });
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Đã nhận yêu cầu · Đang chờ ChatGPT…'), findsOneWidget);
+      expect(api.sent, hasLength(1));
+      api.stream.add('{"summary":"Done","changes":[]}');
+      await tester.pump();
+      expect(find.text('AI đang trả lời…'), findsOneWidget);
+      await api.stream.close();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Done'), findsOneWidget);
+      expect(find.byKey(const Key('ai-waiting')), findsNothing);
+      expect(chat.phase, isNull);
+      expect(chat.busy, false);
+      expect(chat.messages.first.complete, true);
+      await tester.pumpWidget(const SizedBox());
+      chat.dispose();
+      api.dispose();
+    },
+  );
+  test(
+    'stop during document read clears progress and ignores late results',
+    () async {
+      final api = FakeChatGpt()..model = 'first';
+      final chat = DocumentChat(client: api);
+      await chat.initialize();
+      final context = Completer<Map<String, dynamic>>();
+      chat.readDocument = () => context.future;
+      chat.input.text = 'Question';
+      final task = chat.send();
+      expect(chat.phase, AiRequestPhase.readingDocument);
+      expect(chat.messages.first.text, 'Question');
+      chat.stop();
+      chat.input.text = 'New draft';
+      context.complete({'revision': 'r', 'entries': []});
+      await task;
+      expect(api.sent, isEmpty);
+      expect(chat.busy, false);
+      expect(chat.phase, isNull);
+      expect(chat.messages.last.text, 'Đã dừng yêu cầu.');
+      expect(chat.input.text, 'New draft');
+      chat.dispose();
+      await api.stream.close();
+      api.dispose();
+    },
+  );
   test(
     'current document is automatic and edits apply only on explicit action',
     () async {
@@ -268,6 +365,8 @@ void main() {
       expect(client.sent, isEmpty);
       expect(chat.input.text, 'Summarize');
       expect(chat.error, contains('File not ready'));
+      expect(chat.phase, isNull);
+      expect(chat.busy, false);
       chat.dispose();
       client.dispose();
     },
@@ -555,7 +654,8 @@ void main() {
       api.stream.add('Kết quả');
       await tester.pump();
       await tester.tap(find.text('Mở AI'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Kết quả'), findsOneWidget);
       await tester.tap(find.byKey(const Key('collapse-ai')));
       await tester.pumpAndSettle();

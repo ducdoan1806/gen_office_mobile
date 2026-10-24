@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/chatgpt_client.dart';
 
+enum AiRequestPhase { readingDocument, waiting, receiving }
+
 class ChatMessage {
   ChatMessage(this.role, this.text, {this.complete = true});
   final String role;
@@ -47,6 +49,13 @@ class DocumentChat extends ChangeNotifier {
   String? selectedModel;
   String? error, _subject;
   bool busy = false, loading = false, disposed = false;
+  AiRequestPhase? phase;
+  String? get progressLabel => switch (phase) {
+    AiRequestPhase.readingDocument => 'Đã nhận yêu cầu · Đang đọc tài liệu…',
+    AiRequestPhase.waiting => 'Đã nhận yêu cầu · Đang chờ ChatGPT…',
+    AiRequestPhase.receiving => 'AI đang trả lời…',
+    null => null,
+  };
   HttpClient? _transport;
   int _generation = 0;
   void _accountChanged() {
@@ -101,7 +110,13 @@ class DocumentChat extends ChangeNotifier {
     final generation = ++_generation;
     final transport = _transport = HttpClient()
       ..connectionTimeout = const Duration(seconds: 25);
-    ChatMessage? answer, user;
+    final user = ChatMessage('user', question, complete: false);
+    final answer = ChatMessage('assistant', '', complete: false);
+    messages.addAll([user, answer]);
+    input.clear();
+    phase = hasDocument
+        ? AiRequestPhase.readingDocument
+        : AiRequestPhase.waiting;
     notifyListeners();
     try {
       final snapshot = hasDocument ? await readDocument!() : null;
@@ -134,15 +149,12 @@ class DocumentChat extends ChangeNotifier {
           'Cuộc trò chuyện quá dài. Hãy tạo cuộc trò chuyện mới.',
         );
       }
-      user = ChatMessage(
-        'user',
-        context == null
-            ? question
-            : "$question\n\n${context['scope']} · ${(context['entries'] as List).length} mục",
-      )..wireText = content;
-      answer = ChatMessage('assistant', '', complete: false);
-      messages.addAll([user, answer]);
-      input.clear();
+      user.text = context == null
+          ? question
+          : "$question\n\n${context['scope']} · ${(context['entries'] as List).length} mục";
+      user.wireText = content;
+      phase = AiRequestPhase.waiting;
+      notifyListeners();
       var response = '';
       await for (final delta in client.reply(
         history,
@@ -156,9 +168,8 @@ class DocumentChat extends ChangeNotifier {
             'Kết quả quá lớn. Hãy chia nhỏ yêu cầu.',
           );
         }
-        answer.text = hasDocument
-            ? 'Đang đọc tài liệu và xử lý yêu cầu…'
-            : response;
+        phase = AiRequestPhase.receiving;
+        if (!hasDocument) answer.text = response;
         notifyListeners();
       }
       if (generation == _generation) {
@@ -174,10 +185,11 @@ class DocumentChat extends ChangeNotifier {
           answer.text = edit.summary;
         }
         answer.complete = true;
+        user.complete = true;
       }
     } catch (e) {
       if (!disposed && generation == _generation) {
-        if (hasDocument && answer != null) {
+        if (hasDocument) {
           answer.text = 'Chưa xử lý xong yêu cầu với tài liệu.';
         }
         error = e is ChatGptException
@@ -187,11 +199,19 @@ class DocumentChat extends ChangeNotifier {
             : 'Kết nối ChatGPT bị gián đoạn. Kiểm tra mạng và thử lại.';
       }
     } finally {
-      if (answer != null && !answer.complete) user?.complete = false;
+      if (!answer.complete && generation == _generation) {
+        user.complete = false;
+        // Keep a failed question retryable without overwriting a newer draft.
+        if (input.text.isEmpty) input.text = question;
+        if (answer.text.isEmpty) {
+          answer.text = 'Yêu cầu chưa hoàn tất. Vui lòng thử lại.';
+        }
+      }
       transport.close(force: true);
       if (generation == _generation) {
         _transport = null;
         busy = false;
+        phase = null;
       }
       if (!disposed) notifyListeners();
     }
@@ -202,6 +222,12 @@ class DocumentChat extends ChangeNotifier {
     _transport?.close(force: true);
     _transport = null;
     busy = false;
+    phase = null;
+    if (messages.isNotEmpty &&
+        !messages.last.complete &&
+        messages.last.text.isEmpty) {
+      messages.last.text = 'Đã dừng yêu cầu.';
+    }
     // An unanswered user turn must not be paired with the next request.
     if (messages.isNotEmpty &&
         !messages.last.complete &&
@@ -264,6 +290,12 @@ class DocumentAiSheet extends StatefulWidget {
 class _DocumentAiSheetState extends State<DocumentAiSheet> {
   final _scroll = ScrollController();
   DocumentChat get s => widget.session;
+  @override
+  void initState() {
+    super.initState();
+    _scrollDown();
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -651,11 +683,40 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                    SelectableText(
-                                      message.text.isEmpty
-                                          ? 'Đang trả lời…'
-                                          : message.text,
-                                    ),
+                                    if (message.text.isNotEmpty)
+                                      SelectableText(message.text),
+                                    if (!user &&
+                                        s.busy &&
+                                        identical(message, s.messages.last))
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          top: message.text.isEmpty ? 8 : 12,
+                                        ),
+                                        child: Semantics(
+                                          liveRegion: true,
+                                          child: Row(
+                                            key: const Key('ai-waiting'),
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Flexible(
+                                                child: Text(
+                                                  s.progressLabel ??
+                                                      'Đang xử lý…',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     if (message.complete &&
                                         message.edit != null) ...[
                                       Text(
@@ -734,22 +795,38 @@ class _DocumentAiSheetState extends State<DocumentAiSheet> {
                           ? s.error
                           : 'Bạn muốn làm gì với tài liệu?',
                       border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        key: const Key('send-ai'),
-                        tooltip: s.busy && compact ? 'Dừng trả lời' : 'Gửi',
-                        onPressed: s.busy && compact
-                            ? s.stop
-                            : s.busy ||
-                                  !client.connected ||
-                                  s.loading ||
-                                  s.applying
-                            ? null
-                            : () {
-                                unawaited(s.send().then((_) => _scrollDown()));
-                                _scrollDown();
-                              },
-                        icon: Icon(
-                          s.busy && compact ? Icons.stop : Icons.arrow_upward,
+                      suffixIcon: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (s.busy)
+                              const SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            IconButton(
+                              key: const Key('send-ai'),
+                              tooltip: s.busy ? 'Dừng trả lời' : 'Gửi',
+                              onPressed: s.busy
+                                  ? s.stop
+                                  : !client.connected || s.loading || s.applying
+                                  ? null
+                                  : () {
+                                      unawaited(
+                                        s.send().then((_) => _scrollDown()),
+                                      );
+                                      _scrollDown();
+                                    },
+                              icon: Icon(
+                                s.busy ? Icons.stop : Icons.arrow_upward,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
