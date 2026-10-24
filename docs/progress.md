@@ -1,8 +1,32 @@
 # Checklist GenOffice Mobile
 
-Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất; AI công ty và AI tự sửa tài liệu vẫn tạm hoãn, ChatGPT cá nhân được triển khai riêng theo yêu cầu. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
+Cập nhật: 24/10/2026. Giữ đúng lộ trình 9 bước đã thống nhất; AI công ty vẫn tạm hoãn; ChatGPT cá nhân đã triển khai, AI sửa file được yêu cầu tiếp tục trong ghi chú bàn giao. Bước chưa đánh dấu có thể đã làm một phần; chỉ đánh dấu hoàn tất khi đủ các mục con.
 
 Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát triển trên nhánh `dev`; chỉ merge sang nhánh chính khi chủ dự án chấp thuận.
+
+## Bàn giao phiên tiếp theo — ưu tiên theo yêu cầu ngày 24/10/2026
+
+Phiên này chỉ ghi chú; ba mục dưới chưa được sửa hoặc triển khai. Khi tiếp tục, ưu tiên lần lượt:
+
+1. [ ] **Làm đẹp trang callback 127.0.0.1 và tự quay về app.**
+   - Thêm CSS phù hợp nhận diện VPIC1 Office, bố cục đẹp trên điện thoại, trạng thái đăng nhập rõ ràng.
+   - Sau khi xử lý kết quả đăng nhập thành công, thử tự điều hướng về app. Hiển thị trạng thái đang chuyển hướng/chờ 5 giây; nếu sau 5 giây chưa quay về thì mới hiện nút quay lại thủ công.
+   - Giữ xác thực PKCE/state/nonce, Custom Tabs/KeepAlive và đường quay về không mang code/token; không đưa trạng thái thành công trước khi xác thực hoàn tất.
+   - Kiểm tra trên Samsung thật: tự quay về, fallback sau 5 giây, trường hợp người dùng hủy hoặc đăng nhập lỗi.
+
+2. [ ] **Sửa lỗi “Bottom overflowed by 36 pixels” khi mở bàn phím chat AI.**
+   - Đây là lỗi chủ dự án vừa ghi nhận; chưa tái hiện/định vị trong phiên ghi chú này.
+   - Kiểm tra chiều cao bảng AI, SafeArea và viewInsets khi bàn phím mở; ô nhập/nút Gửi luôn sử dụng được, nội dung chat cuộn được, không tràn.
+   - Nghiệm thu bàn phím mở/đóng, nhập nhiều dòng và màn hình nhỏ trên điện thoại thật; giữ editor/hội thoại khi thu gọn.
+
+3. [ ] **Cho AI sửa file theo yêu cầu.**
+   - Đây là yêu cầu tiếp tục mới của chủ dự án cho phần AI thao tác tài liệu; không còn coi toàn bộ mục này là tạm hoãn. Chưa có mã áp dụng sửa file.
+   - Bổ sung lấy đúng ngữ cảnh tài liệu/vùng chọn và chuyển yêu cầu thành thao tác chỉnh sửa có cấu trúc; thống nhất phạm vi định dạng khi triển khai, vì PDF hiện vẫn chỉ đọc.
+   - Có kiểm tra thao tác và revision để tránh sửa nhầm khi tài liệu đã thay đổi; xem trước thay đổi/Áp dụng và Hoàn tác.
+   - Dùng pipeline Lưu hiện có để cập nhật file nguồn người dùng đã mở; kiểm tra sửa → lưu → mở lại trên file mẫu, giữ các phần không chỉnh sửa.
+   - AI công ty, nhà cung cấp khác, iOS và các hạng mục hoãn còn lại không tự mở lại theo ghi chú này.
+
+Trạng thái nền để tiếp tục: ChatGPT đăng nhập/chat thật đã đạt trên Samsung Android 16; 59 test Flutter và analyze đạt ở lần kiểm chứng trước. Danh sách chi tiết ở mục ChatGPT bên dưới. Ghi chú này không xác nhận ba mục trên đã hoàn tất.
 
 ## Phạm vi phát triển hiện tại
 
@@ -13,7 +37,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 - **Bước 5:** tạm hoãn toàn bộ phần chưa hoàn thành, gồm share sheet, chọn nơi xuất trên iOS/macOS và kiểm tra kết quả bằng Microsoft Word. Giữ nguyên các chức năng mở/lưu đã triển khai; tạm hoãn không có nghĩa là hoàn tất bước này.
 - **Điện thoại Android thật:** chủ dự án đã mở lại kiểm thử ngày 22/10/2026. Đã kiểm thử tự động trên Samsung SM-A075F/Android 16/ARM64; nghiệm thu bàn phím/cảm ứng và đối chiếu Microsoft Word vẫn chưa hoàn thành. Xem [kết quả máy thật](android-device-qa.md).
 - **iOS:** tạm hoãn toàn bộ công việc còn lại ở bước 9 và việc kiểm thử lại các tính năng mới trên iOS. Các dấu hoàn thành cũ được giữ như lịch sử kết quả đã làm.
-- **AI:** AI công ty và AI tự sửa tài liệu tiếp tục tạm hoãn. ChatGPT cá nhân đã có đăng nhập, chat và kiểm thử thật trên Samsung ngày 24/10/2026; các giới hạn và phần chưa nghiệm thu được ghi đầy đủ ở mục ChatGPT cuối tài liệu.
+- **AI:** AI công ty tiếp tục tạm hoãn; AI sửa file được yêu cầu tiếp tục ngày 24/10/2026, chưa triển khai, xem ghi chú bàn giao. ChatGPT cá nhân đã có đăng nhập, chat và kiểm thử thật trên Samsung ngày 24/10/2026; các giới hạn và phần chưa nghiệm thu được ghi đầy đủ ở mục ChatGPT cuối tài liệu.
 
 ## Lộ trình đã thống nhất
 
@@ -85,7 +109,7 @@ Tài liệu theo dõi tiến độ được lưu cùng source Flutter. Phát tri
 
 ## AI công ty — tiếp tục tạm hoãn
 
-Giữ interface/mock/API stub AI nhà máy hiện có; chưa nối máy chủ và chưa triển khai AI tự sửa tài liệu. ChatGPT cá nhân trên Android được bổ sung riêng theo yêu cầu ngày 24/10/2026; xem [ChatGPT Android](chatgpt-android.md). Không chạy model trên điện thoại.
+Giữ interface/mock/API stub AI nhà máy hiện có; chưa nối máy chủ. AI sửa tài liệu chưa triển khai và vừa được yêu cầu tiếp tục trong ghi chú bàn giao. ChatGPT cá nhân trên Android được bổ sung riêng theo yêu cầu ngày 24/10/2026; xem [ChatGPT Android](chatgpt-android.md). Không chạy model trên điện thoại.
 
 ## Công việc bổ sung đã làm
 
@@ -106,7 +130,7 @@ Chi tiết phần Sheets/Slides và giới hạn hiện tại: [Android Sheets/S
 
 Bước 6 đã hoàn thành trong luồng DOCX trên Android emulator và đã kiểm thử phục hồi qua force-stop trên Samsung Android 16. Bước 7 đã có PDF viewer offline, tìm kiếm và điều hướng trang trên Android. Đã chuyển PDF/XLSX/PPTX sang App/ribbon gốc GenOffice như DOCX, giữ giới hạn PDF chỉ đọc. Đã tích hợp XLSX/PPTX cơ bản từ source GenOffice và kiểm thử trên Samsung thật; bài integration DOCX lớn đã đạt sau khi sửa bridge. Còn nghiệm thu bàn phím/cảm ứng, stress bộ nhớ/chuyển nền và mở rộng các công cụ nâng cao Sheets/Slides. Phần iOS tiếp tục tạm hoãn. ChatGPT cá nhân đã nghiệm thu đăng nhập/quay về app, chat thật và khôi phục kết nối/model trên Samsung ngày 24/10/2026; còn các ca refresh/revoke/mạng lỗi và AI thao tác tài liệu ở checklist cuối.
 
-Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI công ty/tự sửa tài liệu cho đến khi chủ dự án yêu cầu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
+Chưa tiếp tục bước 5, đối chiếu Word, nghiệm thu thủ công điện thoại hoặc AI công ty cho đến khi chủ dự án yêu cầu. AI sửa file đã được yêu cầu tiếp tục, theo ghi chú bàn giao đầu tài liệu. Bước 3 đã có lưu trữ metadata và liên kết file gốc Android. Giữ nguyên số bước và các dấu hoàn thành đã ghi nhận; không đánh dấu hoàn tất những bước còn hạng mục bị hoãn.
 
 Đây là tổng hợp kết quả kiểm thử đã ghi nhận; phạm vi và ngày kiểm chứng được ghi trong tài liệu từng tính năng. Xem thêm [README](../README.md), [tách editor](docx-web-extraction.md), [WebView mobile](mobile-webview.md), [PDF viewer](pdf-viewer.md) và [build iOS](ios-build.md).
 
