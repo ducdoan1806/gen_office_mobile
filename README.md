@@ -281,3 +281,15 @@ Khi chạy bằng Xcode, mở `ios/Runner.xcworkspace` để có đầy đủ Co
 Ứng dụng cũng đã khai báo `UIApplicationSceneManifest` với `FlutterSceneDelegate`, và `AppDelegate` đăng ký plugin bằng callback `FlutterPluginRegistrant` tương thích Flutter 3.35. Đây là phần cần thiết để app build bằng SDK iOS 27 không crash lúc mở. Xem [hướng dẫn xử lý build iOS](docs/ios-build.md).
 
 XLS/PPT chuyển đổi offline hai chiều bằng runtime có sẵn; CSV hỗ trợ Unicode và giữ dấu phân cách. Lưu ghi đè file nguồn cùng định dạng, Save As xuất XLSX/PPTX. Lưới Excel hỗ trợ vuốt một ngón khóa hướng, quán tính, chạm chọn ô, chạm hai lần sửa và giữ kéo chọn vùng. Xem [định dạng cũ, CSV và cảm ứng](docs/legacy-office-formats.md) để biết giới hạn.
+
+### Windows: JDK cho Gradle
+
+Gradle 8.14.4 của dự án không chạy với Java 25 (JBR của một số bản Android Studio). Dùng JDK 17 và đặt `JAVA_HOME` trỏ tới thư mục JDK, hoặc giải nén JDK 17 vào `.dart_tool/jdk/<jdk-folder>` (không commit SDK vào Git).
+
+Chạy từ PowerShell với launcher của dự án:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tool/run_android.ps1 -Device emulator-5554
+```
+
+Sau khi đã cài dependency bằng `flutter pub get` ở bước 2, launcher chạy với `--no-pub` để dùng dependency đã cài. Launcher ưu tiên JDK cục bộ, đọc Flutter SDK từ `android/local.properties` và đặt thư mục tạm trong `build/task-temp`. Cấu hình này chỉ áp dụng cho tiến trình chạy, không thay đổi Java toàn máy.
