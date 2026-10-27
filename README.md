@@ -284,12 +284,13 @@ XLS/PPT chuyển đổi offline hai chiều bằng runtime có sẵn; CSV hỗ t
 
 ### Windows: JDK cho Gradle
 
-Gradle 8.14.4 của dự án không chạy với Java 25 (JBR của một số bản Android Studio). Dùng JDK 17 và đặt `JAVA_HOME` trỏ tới thư mục JDK, hoặc giải nén JDK 17 vào `.dart_tool/jdk/<jdk-folder>` (không commit SDK vào Git).
-
-Chạy từ PowerShell với launcher của dự án:
+Gradle 8.14.4 của dự án dùng JDK 17. Nếu Android Studio đi kèm Java 25, cài JDK 17 tại vị trí cố định ngoài cache dự án rồi cấu hình Flutter một lần:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tool/run_android.ps1 -Device emulator-5554
+flutter config --jdk-dir="D:\Mobile\jdk17"
+flutter doctor -v
 ```
 
-Sau khi đã cài dependency bằng `flutter pub get` ở bước 2, launcher chạy với `--no-pub` để dùng dependency đã cài. Launcher ưu tiên JDK cục bộ, đọc Flutter SDK từ `android/local.properties` và đặt thư mục tạm trong `build/task-temp`. Cấu hình này chỉ áp dụng cho tiến trình chạy, không thay đổi Java toàn máy.
+Flutter lưu cấu hình này cho người dùng; các lần chạy sau và IDE tự dùng JDK đã chọn. Không cần script riêng hoặc đặt biến môi trường mỗi lần chạy. Nếu IDE đang mở, khởi động lại IDE sau khi đổi cấu hình.
+
+Chạy ứng dụng như mục 3: `flutter run -d emulator-5554`. JDK, Android SDK/NDK và runtime DOC đã cài vẫn được giữ khi chạy `flutter clean`.
