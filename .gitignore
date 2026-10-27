@@ -71,3 +71,6 @@ app.*.map.json
 
 # Local QA scripts and temporary files
 /work/
+# Widget Preview related
+.widget_preview/
+.vscode/
