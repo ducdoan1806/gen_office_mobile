@@ -281,3 +281,16 @@ Khi chạy bằng Xcode, mở `ios/Runner.xcworkspace` để có đầy đủ Co
 Ứng dụng cũng đã khai báo `UIApplicationSceneManifest` với `FlutterSceneDelegate`, và `AppDelegate` đăng ký plugin bằng callback `FlutterPluginRegistrant` tương thích Flutter 3.35. Đây là phần cần thiết để app build bằng SDK iOS 27 không crash lúc mở. Xem [hướng dẫn xử lý build iOS](docs/ios-build.md).
 
 XLS/PPT chuyển đổi offline hai chiều bằng runtime có sẵn; CSV hỗ trợ Unicode và giữ dấu phân cách. Lưu ghi đè file nguồn cùng định dạng, Save As xuất XLSX/PPTX. Lưới Excel hỗ trợ vuốt một ngón khóa hướng, quán tính, chạm chọn ô, chạm hai lần sửa và giữ kéo chọn vùng. Xem [định dạng cũ, CSV và cảm ứng](docs/legacy-office-formats.md) để biết giới hạn.
+
+### Windows: JDK cho Gradle
+
+Gradle 8.14.4 của dự án dùng JDK 17. Nếu Android Studio đi kèm Java 25, cài JDK 17 tại vị trí cố định ngoài cache dự án rồi cấu hình Flutter một lần:
+
+```powershell
+flutter config --jdk-dir="D:\Mobile\jdk17"
+flutter doctor -v
+```
+
+Flutter lưu cấu hình này cho người dùng; các lần chạy sau và IDE tự dùng JDK đã chọn. Không cần script riêng hoặc đặt biến môi trường mỗi lần chạy. Nếu IDE đang mở, khởi động lại IDE sau khi đổi cấu hình.
+
+Chạy ứng dụng như mục 3: `flutter run -d emulator-5554`. JDK, Android SDK/NDK và runtime DOC đã cài vẫn được giữ khi chạy `flutter clean`.
